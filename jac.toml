@@ -1,0 +1,60 @@
+[project]
+name = "personal-planner"
+version = "0.1.0"
+description = "Nudge - minimalist adaptive personal planner"
+default-app = "web"
+jac-version = "==0.37.23"
+
+[apps]
+[apps.web]
+kind = "web-app"
+entry-point = "web.main"
+
+[apps.cli]
+kind = "cli"
+entry-point = "cli.main"
+
+[apps.cli.check]
+[apps.cli.check.lint]
+ignore = ["no-print"]
+
+[apps.mobile]
+kind = "mobile"
+entry-point = "mobile.main"
+
+[dependencies]
+[dependencies.npm]
+react = "^19.2.0"
+react-dom = "^19.2.0"
+zod = "^4.3.6"
+
+[dependencies.npm.dev]
+vite = "^6.4.3"
+"@vitejs/plugin-react" = "^4.7.0"
+typescript = "^5.3.3"
+"@types/react" = "^19.2.0"
+"@types/react-dom" = "^19.2.0"
+
+[dev-dependencies]
+watchdog = ">=3.0.0"
+
+# Keyless AI: built-in local model (llama.cpp in-process, no API key).
+# Declaring [byllm] also declares the `llm`/`llm.local` capabilities so
+# `jac install` pulls litellm + llama-cpp-python into .jac/venv.
+[byllm.model]
+default_model = "local:qwen3.5-4b"
+
+[byllm.local]
+auto_download = true
+
+[client]
+
+[serve]
+port = 8000
+
+[placement.pins]
+# Clock/graph code: today_str uses Python's date, run_rollover mutates the
+# graph -- dual-emitting them client-side would reference unbound names
+# (E5101) and fork the clock. Endpoints are :pub, so client calls still
+# bridge over RPC with the module pinned server.
+"core.api" = "server"

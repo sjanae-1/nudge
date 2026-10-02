@@ -1,0 +1,15 @@
+# Jac generated state: cache, venv, client build, embedded db (jwt_secret)
+.jac/
+
+# JS toolchain
+node_modules/
+
+# local logs / scratch
+_run.log
+_*.log
+
+# OS cruft
+.DS_Store
+
+# python envs
+.venv/
