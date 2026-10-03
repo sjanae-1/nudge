@@ -502,9 +502,24 @@ body {
   font-family: inherit;
 }
 
-.np-editbtn:hover {
+.np-editbtn:hover,
+.np-downbtn:hover {
   border-color: var(--np-accent);
   color: var(--np-accent);
+}
+
+/* second task-bar button: opens AI Breakdown / calendar / steps */
+.np-downbtn {
+  border: 1px solid var(--np-line);
+  background: var(--np-card);
+  color: var(--np-ink);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.24rem 0.62rem;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
 }
 
 .np-editgrid {

@@ -280,6 +280,7 @@ def:pub Planner -> JsxPage {
         show_meta: bool = False,
         new_folder_name: str = "",
         expanded: str = "",
+        editing: str = "",
         rollover_note: str = "",
         loading: bool = True,
         busy: str = "",
@@ -409,6 +410,9 @@ def:pub Planner -> JsxPage {
             if expanded == id {
                 expanded = "";
             }
+            if editing == id {
+                editing = "";
+            }
             cal_menu = "";
             await refresh();
         } except Exception as e {
@@ -504,6 +508,20 @@ def:pub Planner -> JsxPage {
         expanded = id;
         ics_one = "";
         cal_menu = "";
+        try {
+            ics_one = await task_ics_download_url(id=id);
+        } except Exception as e {
+            error = str(e);
+        }
+    }
+
+    """Open (seeded) or close the Make changes form for one task."""
+    def do_editmenu(id: str) {
+        if editing == id {
+            editing = "";
+            return;
+        }
+        editing = id;
         # Seed the edit form from this task's current fields.
         for t in tasks {
             if jid(t) == id {
@@ -541,11 +559,6 @@ def:pub Planner -> JsxPage {
                     ed_kind = "annual";
                 }
             }
-        }
-        try {
-            ics_one = await task_ics_download_url(id=id);
-        } except Exception as e {
-            error = str(e);
         }
     }
 
@@ -615,6 +628,7 @@ to one task."""
                 start_time=(ed_start if ed_kind else ""),
                 end_time=(ed_end if ed_kind else "")
             );
+            editing = "";
             await refresh();
         } except Exception as e {
             error = str(e);
@@ -1229,7 +1243,7 @@ to one task."""
                         <div class="np-calgrid np-calwd">
                             {[
                                 <span key={w} class="np-cald">{w}</span>
-                                for w in ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+                                for w in ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
                             ]}
                         </div>
                         <div class="np-calgrid">{cal_grid()}</div>
@@ -1498,9 +1512,16 @@ to one task."""
                                             <button
                                                 class="np-editbtn"
                                                 title="Edit name, date, priority, location, time and repeat"
+                                                onClick={lambda { do_editmenu(jid(t)); }}
+                                            >
+                                                {("Close" if editing == jid(t) else "Make changes")}
+                                            </button>
+                                            <button
+                                                class="np-downbtn"
+                                                title="AI Breakdown, calendar import, steps"
                                                 onClick={lambda { do_expand(jid(t)); }}
                                             >
-                                                {("Close" if expanded == jid(t) else "Make changes")}
+                                                {("▴" if expanded == jid(t) else "▾")}
                                             </button>
                                         </div>
                                         {(<div class="np-detail">
@@ -1515,7 +1536,7 @@ to one task."""
                                                     📍 {t.location}
                                                 </a>
                                             </div>) if t.location else None}
-                                            <div class="np-editgrid">
+                                            {(<div class="np-editgrid">
                                                 <input
                                                     class="np-f-name"
                                                     value={ed_title}
@@ -1653,8 +1674,15 @@ to one task."""
                                                 >
                                                     Save changes
                                                 </button>
-                                            </div>
-                                            <div class="np-actions">
+                                                <button
+                                                    class="np-del"
+                                                    title="Delete task"
+                                                    onClick={lambda { do_delete(jid(t)); }}
+                                                >
+                                                    Delete Task
+                                                </button>
+                                            </div>) if editing == jid(t) else None}
+                                            {(<div class="np-actions">
                                                 <button
                                                     class="np-ai"
                                                     title="AI breakdown into micro-steps"
@@ -1704,13 +1732,13 @@ to one task."""
                                                 >
                                                     Delete Task
                                                 </button>
-                                            </div>
+                                            </div>) if expanded == jid(t) else None}
                                             {(<div class="np-ainote np-busy">
                                                 AI is writing a breakdown -- about 15 seconds…
                                             </div>)
-                                                if busy and busy == jid(t)
+                                                if expanded == jid(t) and busy == jid(t)
                                                 else None}
-                                            <div class="np-newstep">
+                                            {(<div class="np-newstep">
                                                 <input
                                                     class="np-stepin"
                                                     value={new_step}
@@ -1732,8 +1760,8 @@ to one task."""
                                                 >
                                                     Add step
                                                 </button>
-                                            </div>
-                                            <div class="np-subs">
+                                            </div>) if expanded == jid(t) else None}
+                                            {(<div class="np-subs">
                                                 {(<span class="np-sub-hint">
                                                     No steps yet -- add one above or hit "AI Breakdown"
                                                 </span>) if len(task_subs(jid(t))) == 0
@@ -1829,9 +1857,9 @@ to one task."""
                                                                 </div>}
                                                         for s in task_subs(jid(t))
                                                     ]}
-                                            </div>
+                                            </div>) if expanded == jid(t) else None}
                                         </div>)
-                                            if expanded == jid(t)
+                                            if editing == jid(t) or expanded == jid(t)
                                             else None}
                                     </div>
                                     for t in visible_tasks()
