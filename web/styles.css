@@ -1324,6 +1324,66 @@ button.np-gcal {
   background: var(--np-red);
 }
 
+/* folder chips: color dot (same spot as Done/Deleted) opens a palette */
+.np-fchip {
+  position: relative;
+}
+
+.np-fchip > .np-chip {
+  width: 100%;
+}
+
+.np-cdot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.np-cdot:hover {
+  transform: scale(1.3);
+}
+
+.np-pal {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.55rem;
+  max-width: 200px;
+  background: white;
+  border: 1px solid var(--np-line);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px -8px rgba(23, 26, 43, 0.35);
+  animation: npIn 0.15s ease both;
+}
+
+.np-pal-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.np-pal-dot:hover {
+  transform: scale(1.18);
+}
+
+.np-pal-on {
+  outline: 2px solid var(--np-ink);
+  outline-offset: 1px;
+}
+
 /* deleted-task rows */
 .np-trash-row {
   opacity: 0.92;

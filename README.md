@@ -24,7 +24,10 @@ automatic rollover, and calendar/email integration.
   button, the Calendar dropdown, and ✕ — nothing else.
 * **Dynamic Folders:** Isolates tasks by course or category, with
   reorder/delete management behind the sidebar gear (pinned to the far
-  right of the Views+Folders bar).
+  right of the Views+Folders bar). Every folder chip carries its color
+  dot in the same spot as the Done/Deleted dots — click the dot to pick
+  a new color from a preset rainbow palette (the choice carries into
+  task badges, calendar events, and the legend).
 * **Done & Deleted folders:** Marking a task done moves it into a `Done`
   folder (shown below "+ new folder", hidden when empty). Deleting a task
   soft-deletes it into a `Deleted` folder that keeps the last 30 days of

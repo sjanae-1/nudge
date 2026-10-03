@@ -261,6 +261,21 @@ def:protect move_folder(name: str, dirn: int) -> list[Folder] {
     return sorted_folders();
 }
 
+"""Recolor a folder (the client offers a preset rainbow palette)."""
+def:protect set_folder_color(name: str, color: str) -> Folder | None {
+    c = color.strip();
+    if not c.startswith("#") or (len(c) != 7 and len(c) != 4) {
+        raise ValueError("color must be a hex value like #2f9e44");
+    }
+    for f in all_folders() {
+        if f.name == name {
+            f.color = c;
+            return f;
+        }
+    }
+    return None;
+}
+
 # --- Task endpoints ---
 
 """All tasks, after running the auto-rollover pass."""

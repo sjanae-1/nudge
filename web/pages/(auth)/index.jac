@@ -30,7 +30,8 @@ import from core.api {
     ics_download_url,
     task_ics_download_url,
     list_deleted,
-    restore_task
+    restore_task,
+    set_folder_color
 }
 
 glob MONTHS: list[str] = [
@@ -46,6 +47,22 @@ glob MONTHS: list[str] = [
     "October",
     "November",
     "December"
+];
+
+"""Preset rainbow palette offered for folder colors."""
+glob RAINBOW: list[str] = [
+    "#e5484d",
+    "#f76707",
+    "#f59f00",
+    "#ffd43b",
+    "#2f9e44",
+    "#0ca678",
+    "#15aabf",
+    "#1971c2",
+    "#7048e8",
+    "#e64980",
+    "#846358",
+    "#868e96"
 ];
 
 # --- Pure date helpers (client-safe: integer math only, no datetime) ---
@@ -203,7 +220,8 @@ def:pub Planner -> JsxPage {
         buf_unit: str = "days",
         special: str = "",
         trash: list[any] = [],
-        cal_menu: str = "";
+        cal_menu: str = "",
+        color_for: str = "";
 
     # Load everything once, then reuse refresh() after every mutation.
     async can with entry {
@@ -427,6 +445,7 @@ def:pub Planner -> JsxPage {
     async def set_folder(name: str) {
         folder_filter = name;
         special = "";
+        color_for = "";
         if cal {
             try {
                 ics_url = await ics_download_url(folder=name);
@@ -503,6 +522,26 @@ def:pub Planner -> JsxPage {
             cal_menu = "";
         } else {
             cal_menu = id;
+        }
+    }
+
+    """Open/close the rainbow palette behind a folder's color dot."""
+    def toggle_palette(name: str) {
+        if color_for == name {
+            color_for = "";
+        } else {
+            color_for = name;
+        }
+    }
+
+    async def do_set_folder_color(name: str, color: str) {
+        error = "";
+        color_for = "";
+        try {
+            await set_folder_color(name=name, color=color);
+            folders = await list_folders();
+        } except Exception as e {
+            error = str(e);
         }
     }
 
@@ -801,7 +840,10 @@ def:pub Planner -> JsxPage {
                         <button
                             class={"np-gear " + ("np-gear-on" if manage_f else "")}
                             title="Manage folders (reorder / delete)"
-                            onClick={lambda { manage_f = not manage_f; }}
+                            onClick={lambda {
+                                manage_f = not manage_f;
+                                color_for = "";
+                            }}
                         >
                             ⚙
                         </button>
@@ -814,16 +856,43 @@ def:pub Planner -> JsxPage {
                         All folders
                     </button>) if not manage_f else None}
                     {([
-                        <button
-                            key={f.name}
-                            class={
-                                "np-chip "
-                                    + ("np-chip-on" if folder_filter == f.name else "")
-                            }
-                            onClick={lambda { set_folder(f.name); }}
-                        >
-                            {f.name}
-                        </button>
+                        <div class="np-fchip" key={f.name}>
+                            <button
+                                class={
+                                    "np-chip "
+                                        + ("np-chip-on" if folder_filter == f.name else "")
+                                }
+                                onClick={lambda { set_folder(f.name); }}
+                            >
+                                <span
+                                    class="np-cdot"
+                                    style={{"backgroundColor": f.color}}
+                                    title="Pick a folder color"
+                                    onClick={lambda (e: MouseEvent) {
+                                        e.stopPropagation();
+                                        toggle_palette(f.name);
+                                    }}
+                                />
+                                {f.name}
+                            </button>
+                            {(<div class="np-pal">
+                                {[
+                                    <button
+                                        key={c}
+                                        class={
+                                            "np-pal-dot "
+                                                + ("np-pal-on" if f.color == c else "")
+                                        }
+                                        style={{"backgroundColor": c}}
+                                        title="Use this color"
+                                        onClick={lambda {
+                                            do_set_folder_color(f.name, c);
+                                        }}
+                                    />
+                                    for c in RAINBOW
+                                ]}
+                            </div>) if color_for == f.name else None}
+                        </div>
                         for f in folders
                     ]) if not manage_f else [
                         <div class="np-mrow" key={f.name}>
