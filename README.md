@@ -1,139 +1,86 @@
 # Nudge — Personal Planner in Jac
 
-* **Name:** Jiayin (Janae) Shao
-* **UMID:** 34159055
-* **Course:** EECS 449 — Fall 2026
+**Name:** Jiayin (Janae) Shao · **Course:** EECS 449 — Fall 2026
 
 ## Overview
 
-Nudge is an adaptive personal planner built in Jac that syncs across four
-interfaces -- web, mobile, CLI, and the shared server API -- against one
-graph database. Designed for college workflows, it keeps tasks manageable
-through AI task decomposition, folder filtering, customizable metadata,
-automatic rollover, and calendar/email integration.
+Nudge is an adaptive personal planner for college students written in Jac.
+Change a due date anywhere and it updates everywhere. Its three main features:
 
-## Key Features & Value
+1. **AI Task Decomposition** — one click splits an overwhelming task into
+   dated, editable 15–45-minute micro-steps. Every new account ships with a
+   finished example already broken down under *Grocery shopping*.
+2. **Auto-Rollover + Nudge** — unfinished overdue tasks automatically shift
+   to today on load, keep a red `was <date>` marker, and offer a one-click
+   **→ tomorrow** push.
+3. **Recurring Tasks** — keep daily/weekly/monthly tasks on your radar until a stop date that ends the series.
 
-* **AI Task Decomposition:** Breaks overwhelming assignments into dated
-  micro-steps (15–45 min each), each with an **editable time estimate**.
-  Fresh accounts ship with a seeded example already broken down under
-  *Grocery shopping*.
-* **Unified dropdowns:** Folder selection is one single-line dropdown —
-  its first line shows the current value and the last entry is
-  `+ add new …`, which opens an inline name input. No second "edit" icon.
-* **Per-task priority:** each expanded task offers exactly
-  `HIGH PRIORITY / MEDIUM PRIORITY / LOW PRIORITY`, the break-down
-  button, the Calendar dropdown, and **Delete Task** — nothing else.
-  Lists are ordered **due date first** (overdue floats to the top),
-  then priority high → medium → low within the same day, then the
-  earliest start time, then title — and re-order the moment a due date
-  or priority changes. Completed tasks move to the `Done` folder, and
-  completed breakdown steps sink to the bottom of their step list.
-* **Dynamic Folders:** Isolates tasks by course or category, with
-  reorder/delete management behind the sidebar gear (pinned to the far
-  right of the Views+Folders bar). Every folder chip carries its color
-  dot in the same spot as the Done/Deleted dots — click the dot to pick
-  a new color from a preset rainbow palette (the choice carries into
-  task badges, calendar events, and the legend).
-* **Done & Deleted folders:** Marking a task done moves it into a `Done`
-  folder (shown below "+ new folder", hidden when empty). Deleting a task
-  soft-deletes it into a `Deleted` folder that keeps the last 30 days of
-  deletions, each restorable with one click.
-* **Dual Views (List & Calendar)** with a fill-in-the-blank
-  **"due within [N] [days/weeks]"** window for the Today view.
-* **One Calendar button per task:** drops down to *Google Calendar* or
-  *.ics download* (Apple/Outlook/any calendar).
-* **Folder-filtered calendar & export:** in the calendar view the
-  sidebar folder list acts as a filter over the plotted events, and
-  **Download .ics** exports only the selected folder's tasks (the button
-  names the active folder).
-* **Auto-Rollover + overdue nudge:** unfinished past-due tasks shift
-  to today on load. A nudged task keeps a red `was <date>` marker in
-  the list plus a one-click **→ tomorrow** push, genuinely past-due
-  dates render red, and the banner reports how many were nudged.
-* **Recurring tasks, occurrence by occurrence:** repeat rules (daily,
-  weekdays, every week on a day, monthly, annual) add each occurrence
-  as its own independent row, so you cross them off one at a time;
-  completing one adds the next occurrence to the list. An optional
-  **repeat until** stop date ends the series — the last matching day
-  on or before it is the final occurrence (web create + edit menu,
-  mobile create row, and CLI `--until`).
-* **Mandatory Due Dates** on task creation.
+## Setup & Run
 
-## Architecture & Component Breakdown
+**Prerequisites:** Python 3.10+ and `pip install jaclang==0.37.23`.
+No AI API key needed, the local model (`local:qwen3.5-4b`) downloads
+automatically on first run.
 
-Nudge uses a unified Jac backend (`core/api.jac`, served as a declared
-`service` app) to keep data synchronized across four components:
-
-```
-                  ┌─────────────────────────────────────────┐
-                  │          Jac Core Logic & Server        │
-                  │  (Graph DB, AI Engine, Auto-Rollover)   │
-                  └────────────────────┬────────────────────┘
-                                       │
-        ┌──────────────────────────────┼──────────────────────────────┐
-        ▼                              ▼                              ▼
- ┌──────────────┐              ┌──────────────┐              ┌──────────────┐
- │ Web Frontend │              │  Mobile App  │              │ Terminal CLI │
- │ (Full Admin) │              │(Quick Focus) │              │(Rapid Action)│
- └──────────────┘              └──────────────┘              └──────────────┘
-```
-
-* **Server (`core/`):** graph nodes (`Task`, `Folder`, `Subtask`),
-  soft-delete (30-day trash), rollover, calendar export (.ics / Google
-  links, optionally scoped to one folder), and `by llm()` prompts.
-* **Web (`web/`):** full-featured dashboard: list + calendar views,
-  unified folder dropdowns, Done/Deleted folders, per-task priority,
-  AI breakdown with editable estimates, folder-filtered .ics export.
-* **Mobile (`mobile/`):** lightweight Today/This-week view for rapid
-  capture and quick completion on the go.
-* **CLI (`cli/`):** keyboard-driven terminal client; runs the API
-  colocated, so it works offline against the same database.
-
-## Setup & Usage
-
-### Prerequisites
-* Python 3.10+
-* `jaclang` (`pip install jaclang`, this project pins `==0.37.23`)
-
-No AI API key is needed: the local model (`local:qwen3.5-4b`) is
-downloaded automatically on first run.
-
-### 1. Web Application & Server
-Run from the root directory:
 ```bash
 git clone https://github.com/sjanae-1/nudge.git
 cd nudge
-jac run --dev
+jac run --dev          # web app + API → http://localhost:8000 (API on :8001)
 ```
-Serves the web UI at `http://localhost:8000` (API on `:8001`).
 
-### 2. CLI Interface
+Pick **Create account** on the login page to register for a new account.
+
+## CLI
+
 ```bash
-jac run cli -- today
+jac run cli -- today                    # what is due soon
+jac run cli -- all                      # every open task
 jac run cli -- add "EECS 449 HW1" --due 2026-10-05 --folder "EECS 449" --priority high
 jac run cli -- add "Team catchup" --due 2026-10-04 --recur weekly --until 2026-12-11
-jac run cli -- breakdown <task>
+jac run cli -- breakdown <task>         # AI micro-steps
 jac run cli -- done <task_id>
-jac run cli -- all
 ```
 
-### 3. Mobile View
-```bash
-jac run mobile --dev
-```
-Use its own ports (don't run the web and mobile dev servers at the same
-time).
+The CLI runs the API colocated in-process, so it hits the same database even
+when the web server is off.
 
-### 4. Server API (service app)
-`core.api` is declared as a `service` app in `jac.toml`; when the web app
-runs it is served under `/api/api/function/<name>` with bearer-token
-auth. The web and CLI surfaces both bridge to it.
-
-## Checks
+## Mobile App
 
 ```bash
-jac check                 # type-check + lint all apps (web, cli, mobile, api)
-jac build web --as client # client bundle
-jac build mobile --platform web
+# stop the web dev server first — both claim the 800x ports
+jac run --dev --platform web mobile     # preview in a browser (react-native-web)
+jac run --dev mobile                    # native: scan the Expo Go QR (press i / a)
 ```
+
+First native run scaffolds the Expo project and installs npm deps (one-time).
+A lightweight Today / This-week view for quick capture and completion on the go.
+
+## How the four components fit together
+
+```
+              ┌────────────────────────────────────┐
+              │  Server core/ — one graph DB, AI,  │
+              │  rollover, calendar export         │
+              └────────────────┬───────────────────┘
+                    ┌──────────┼──────────┐
+                    ▼          ▼          ▼
+                  Web       Mobile       CLI
+```
+
+The server (`core/api.jac`, declared `service` app) is the single brain; the
+web, mobile, and CLI are thin clients over it with the same JWT auth. The web
+bridges over HTTP, the mobile app speaks the same bridge from React Native,
+and the CLI registers the service locally to run in-process. Sign in on any
+surface and all four stay in sync.
+
+Three things that make it impressive:
+
+1. **One brain, four surfaces** — a single declared service app and graph DB
+   serve a full React dashboard, a React Native app, and an offline-capable
+   CLI, with identical auth and zero data duplication.
+2. **Color-aware calendar with scoped export** — folder chips filter both the
+   calendar grid *and* the `.ics` download (the file contains only the
+   selected folders), plus one-click Google Calendar / Apple `.ics` links per
+   task.
+3. **Safe by default** — completing moves tasks to a Done folder, deleting
+   soft-deletes into a 30-day restorable Deleted folder, and lists re-sort
+   live by due date → priority → start time → title.

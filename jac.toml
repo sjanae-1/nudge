@@ -1,7 +1,7 @@
 [project]
 name = "personal-planner"
 version = "0.1.0"
-description = "Nudge - minimalist adaptive personal planner"
+description = "Nudge - Personal Planning App built for College Students"
 default-app = "web"
 jac-version = "==0.37.23"
 
