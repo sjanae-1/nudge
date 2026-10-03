@@ -16,6 +16,8 @@ import argparse;
 import asyncio;
 import sys;
 
+import from datetime { date }
+
 import from jaclang.server.bridge { BridgeError }
 import from jaclang.server { sv_client }
 import core.api as api_mod;
@@ -52,12 +54,49 @@ def fmt(t: Task, n: int) -> str {
         line = line + ", @" + t.location;
     }
     if t.recurrence {
-        line = line + ", ↻ weekly";
+        line = line + ", " + recur_label(t);
         if t.start_time and t.end_time {
-            line = line + " " + t.start_time + "-" + t.end_time;
+            line = line + " (" + t.start_time + "-" + t.end_time + ")";
         }
     }
     return line + ")";
+}
+
+"""Human label for a recurrence rule (mirrors core.api's rule shapes)."""
+def recur_label(t: Task) -> str {
+    r = t.recurrence;
+    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    months = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    if r == "daily" {
+        return "↻ daily";
+    }
+    if r == "weekdays" {
+        return "↻ weekdays (Mon-Fri)";
+    }
+    parts = r.split(":");
+    if len(parts) < 2 {
+        # legacy rule: anchored to the due date's weekday
+        return "↻ every " + days[date.fromisoformat(t.due_date).weekday()];
+    }
+    kind = parts[0];
+    arg = parts[1];
+    if kind == "weekly" {
+        return "↻ every " + days[int(arg)];
+    }
+    if kind == "monthly-first" {
+        return "↻ 1st " + days[int(arg)] + " of each month";
+    }
+    if kind == "monthly-date" {
+        return "↻ monthly on day " + arg;
+    }
+    if kind == "annual" {
+        p = arg.split("-");
+        return "↻ annually " + months[int(p[0]) - 1] + " " + p[1];
+    }
+    return "↻ " + r;
 }
 
 """0-based index into tasks from a number or a title fragment; -1 on miss."""
@@ -117,13 +156,23 @@ async def cmd_add(
     if not d {
         d = await current_date();
     }
+    # Shape the --recur choice into a core.api rule: weekly stays anchored
+    # to the due weekday; monthly/annual derive their day from the due date.
+    rule = recur;
+    p = d.split("-");
+    if recur == "monthly" {
+        rule = "monthly-date:" + str(int(p[2]));
+    }
+    if recur == "annual" {
+        rule = "annual:" + p[1] + "-" + p[2];
+    }
     task = await add_task(
         title=title,
         due_date=d,
         folder_name=folder,
         location=place,
         priority=priority,
-        recurrence=recur,
+        recurrence=rule,
         start_time=start,
         end_time=end
     );
@@ -203,7 +252,9 @@ async def cmd_done(target: str) -> int {
         print(
             "done: "
                 + updated.title
-                + " -- repeats weekly, next on "
+                + " -- "
+                + recur_label(updated)
+                + ", next on "
                 + updated.due_date
         );
     } else {
@@ -255,9 +306,13 @@ def build_parser -> argparse.ArgumentParser {
     addp.add_argument("--location", `default="", help="place / room / address");
     addp.add_argument(
         "--recur",
-        choices=["weekly"],
+        choices=["daily", "weekly", "weekdays", "monthly", "annual"],
         `default="",
-        help="repeat every week (completing rolls to the next occurrence)"
+        help=(
+            "repeat rule: daily, weekly (on the due weekday), weekdays "
+            "(Mon-Fri), monthly (day taken from --due), annual "
+            "(month+day taken from --due)"
+        )
     );
     addp.add_argument("--start", `default="", help="start time HH:MM (e.g. 13:00)");
     addp.add_argument("--end", `default="", help="end time HH:MM (e.g. 15:00)");

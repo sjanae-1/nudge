@@ -94,67 +94,6 @@ def ymd_add(s: str, n: int) -> str {
     return str(y) + "-" + pad2(m) + "-" + pad2(d);
 }
 
-def idiv(a: int, b: int) -> int {
-    return int(a / b);
-}
-
-"""Weekday name for a yyyy-mm-dd date (pure integer math, client-safe)."""
-def weekday_name(s: str) -> str {
-    p = s.split("-");
-    y = int(p[0]);
-    m = int(p[1]);
-    d = int(p[2]);
-    yy = y - (1 if m <= 2 else 0);
-    era = idiv(yy if yy >= 0 else yy - 399, 400);
-    yoe = yy - era * 400;
-    doy = idiv(153 * (m + (-3 if m > 2 else 9)) + 2, 5) + d - 1;
-    doe = yoe * 365 + idiv(yoe, 4) - idiv(yoe, 100) + doy;
-    days = era * 146097 + doe - 719468;
-    names = [
-        "Monday", "Tuesday", "Wednesday", "Thursday",
-        "Friday", "Saturday", "Sunday"
-    ];
-    return names[(days + 3) % 7];
-}
-
-"""12-hour label for an HH:MM string ("13:00" -> "1:00 PM")."""
-def hm(s: str) -> str {
-    p = s.split(":");
-    hh = int(p[0]);
-    mm = "00";
-    if len(p) > 1 and p[1] {
-        mm = p[1];
-    }
-    h12 = hh % 12;
-    if h12 == 0 {
-        h12 = 12;
-    }
-    return str(h12) + ":" + mm + (" AM" if hh < 12 else " PM");
-}
-
-"""Time range; single meridiem when both halves share it."""
-def hm_range(a: str, b: str) -> str {
-    ha = int(a.split(":")[0]);
-    hb = int(b.split(":")[0]);
-    if (ha < 12) == (hb < 12) {
-        return hm(a).replace(" PM", "").replace(" AM", "") + "-" + hm(b);
-    }
-    return hm(a) + " - " + hm(b);
-}
-
-"""Human recurrence label: 'every Sunday 1:00-3:00 PM'."""
-def recur_text(t: any) -> str {
-    s = "every " + weekday_name(t.due_date);
-    if t.start_time and t.end_time {
-        s = s + " " + hm_range(t.start_time, t.end_time);
-    } else {
-        if t.start_time {
-            s = s + " " + hm(t.start_time);
-        }
-    }
-    return s;
-}
-
 """True when a bridge failure means the session token is dead (stale
 account / reset store) -- the UI should sign out, not show raw JSON."""
 def is_auth_error(msg: str) -> bool {
@@ -747,9 +686,6 @@ def:pub app -> JsxElement {
                             <Text style={styles.rowMeta}>
                                 {"due " + t.due_date}
                             </Text>
-                            {(<Text style={styles.recur}>
-                                {"↻ " + recur_text(t)}
-                            </Text>) if t.recurrence else <View/>}
                         </View>
                         {(<Text style={styles.loc}>
                             {"📍 " + t.location}
@@ -797,9 +733,6 @@ def:pub app -> JsxElement {
                             <Text style={styles.rowMeta}>
                                 {"due " + t.due_date}
                             </Text>
-                            {(<Text style={styles.recur}>
-                                {"↻ " + recur_text(t)}
-                            </Text>) if t.recurrence else <View/>}
                         </View>
                         {(<Text style={styles.loc}>
                             {"📍 " + t.location}

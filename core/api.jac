@@ -153,17 +153,114 @@ def:priv clamp_due(raw: str, latest: str) -> str {
     return d;
 }
 
-"""Next occurrence of a recurring task: step past the current due date
-until it lands on/after today, preserving the weekday (7 days for
-weekly)."""
-def:priv next_occurrence(t: Task, today: str) -> str {
-    step = 7 if t.recurrence == "weekly" else 1;
-    td = date.fromisoformat(today);
-    nd = date.fromisoformat(t.due_date) + timedelta(days=step);
-    while nd < td {
-        nd = nd + timedelta(days=step);
+"""Recurrence rule shapes: "" (none), daily, weekdays, weekly (legacy:
+anchored to the due weekday), weekly:0-6, monthly-first:0-6,
+monthly-date:1-31, annual:MM-DD. Weekdays are 0=Monday..6=Sunday."""
+def:priv rule_ok(rule: str) -> bool {
+    if rule == "" or rule == "daily" or rule == "weekdays" or rule == "weekly" {
+        return True;
     }
-    return str(nd);
+    parts = rule.split(":");
+    if len(parts) != 2 {
+        return False;
+    }
+    kind = parts[0];
+    arg = parts[1];
+    if kind == "weekly" or kind == "monthly-first" {
+        return arg.isnumeric() and int(arg) >= 0 and int(arg) <= 6;
+    }
+    if kind == "monthly-date" {
+        return arg.isnumeric() and int(arg) >= 1 and int(arg) <= 31;
+    }
+    if kind == "annual" {
+        p = arg.split("-");
+        if len(p) != 2 or not p[0].isnumeric() or not p[1].isnumeric() {
+            return False;
+        }
+        return (
+            int(p[0]) >= 1
+                and int(p[0]) <= 12
+                and int(p[1]) >= 1
+                and int(p[1]) <= 31
+        );
+    }
+    return False;
+}
+
+def:priv last_day(y: int, m: int) -> int {
+    return (
+        date(y + (1 if m == 12 else 0), 1 if m == 12 else m + 1, 1)
+            - timedelta(days=1)
+    ).day;
+}
+
+"""True when date d matches the task's recurrence rule."""
+def:priv rule_matches(t: Task, d: date) -> bool {
+    r = t.recurrence;
+    if r == "daily" {
+        return True;
+    }
+    if r == "weekdays" {
+        return d.weekday() < 5;
+    }
+    if r == "weekly" {
+        return d.weekday() == date.fromisoformat(t.due_date).weekday();
+    }
+    parts = r.split(":");
+    if len(parts) < 2 {
+        return False;
+    }
+    kind = parts[0];
+    arg = parts[1];
+    if kind == "weekly" {
+        return d.weekday() == int(arg);
+    }
+    if kind == "monthly-first" {
+        return d.weekday() == int(arg) and d.day <= 7;
+    }
+    if kind == "monthly-date" {
+        return d.day == min(int(arg), last_day(d.year, d.month));
+    }
+    if kind == "annual" {
+        p = arg.split("-");
+        return (
+            d.month == int(p[0])
+                and d.day == min(int(p[1]), last_day(d.year, d.month))
+        );
+    }
+    return False;
+}
+
+"""Next occurrence of a recurring task: strictly after the current due
+date, never before today (completing an occurrence rolls it forward)."""
+def:priv next_occurrence(t: Task, today: str) -> str {
+    td = date.fromisoformat(today);
+    d = date.fromisoformat(t.due_date) + timedelta(days=1);
+    guard = 0;
+    while guard < 800 {
+        if d >= td and rule_matches(t, d) {
+            return str(d);
+        }
+        d = d + timedelta(days=1);
+        guard = guard + 1;
+    }
+    return str(d);
+}
+
+"""First occurrence on/after today -- how a stale recurring task catches
+up on rollover (missed occurrences are skipped, not clamped)."""
+def:priv roll_occurrence(t: Task, today: str) -> str {
+    td = date.fromisoformat(today);
+    d = td;
+    guard = 0;
+    while guard < 800 {
+        if rule_matches(t, d) {
+            return str(d);
+        }
+        d = d + timedelta(days=1);
+        guard = guard + 1;
+    }
+    return str(d);
 }
 
 """Shift every past-due incomplete task to today. Returns count shifted.
@@ -178,7 +275,7 @@ def:priv run_rollover -> int {
     for t in all_tasks() {
         if not t.completed and t.due_date < today {
             if t.recurrence {
-                t.due_date = next_occurrence(t, today);
+                t.due_date = roll_occurrence(t, today);
             } else {
                 t.due_date = today;
             }
@@ -425,9 +522,9 @@ def:protect add_task(
     if not due_date.strip() {
         raise ValueError("due_date is mandatory (yyyy-mm-dd)");
     }
-    rec = recurrence.strip().lower();
-    if rec and rec != "weekly" {
-        raise ValueError("recurrence must be 'weekly'");
+    rec = recurrence.strip();
+    if not rule_ok(rec) {
+        raise ValueError("unknown recurrence: " + rec);
     }
     folder = folder_named(folder_name.strip() or "Miscellaneous");
     task = folder ++> Task(
@@ -462,20 +559,30 @@ def:protect complete_task(id: str) -> Task | None {
     return None;
 }
 
-"""Change a task's folder, priority, and/or location after creation
-(a blank argument leaves that field unchanged)."""
+"""Change a task's fields after creation (task name, due date, folder,
+priority, location, recurrence, start/end time).
+
+Default arguments leave a field unchanged. The sentinels below make
+explicit clearing possible: pass an empty string for location,
+recurrence, start_time, or end_time to clear it; title and due_date
+keep their "__keep__" value unless a real value is sent."""
 def:protect update_task(
     id: str,
     folder_name: str = "",
     priority: str = "",
-    location: str = "",
+    location: str = "__keep__",
+    title: str = "__keep__",
+    due_date: str = "__keep__",
+    recurrence: str = "__keep__",
+    start_time: str = "__keep__",
+    end_time: str = "__keep__",
 ) -> Task | None {
     for t in all_tasks() {
         if jid(t) == id {
             if folder_name.strip() {
                 t.folder_name = folder_named(folder_name.strip()).name;
             }
-            if location.strip() {
+            if location != "__keep__" {
                 t.location = location.strip();
             }
             if priority.strip() {
@@ -484,6 +591,32 @@ def:protect update_task(
                     raise ValueError("priority must be high, medium, or low");
                 }
                 t.priority = p;
+            }
+            if title != "__keep__" {
+                if not title.strip() {
+                    raise ValueError("title is required");
+                }
+                t.title = title.strip();
+            }
+            if due_date != "__keep__" {
+                d = due_date.strip();
+                if len(d) != 10 or d[4] != "-" or d[7] != "-" {
+                    raise ValueError("due_date must be yyyy-mm-dd");
+                }
+                t.due_date = d;
+            }
+            if recurrence != "__keep__" {
+                r = recurrence.strip();
+                if not rule_ok(r) {
+                    raise ValueError("unknown recurrence: " + r);
+                }
+                t.recurrence = r;
+            }
+            if start_time != "__keep__" {
+                t.start_time = start_time.strip();
+            }
+            if end_time != "__keep__" {
+                t.end_time = end_time.strip();
             }
             return t;
         }
@@ -549,6 +682,36 @@ def:protect list_deleted -> list[Task] {
 }
 
 # --- Subtask endpoints ---
+
+"""Add a step to a task by hand -- no AI breakdown needed."""
+def:protect create_subtask(
+    task_id: str,
+    title: str,
+    due_date: str = "",
+    est_minutes: int = 30,
+) -> Subtask | None {
+    if not title.strip() {
+        raise ValueError("step title is required");
+    }
+    if est_minutes < 1 or est_minutes > 1440 {
+        est_minutes = 30;
+    }
+    for t in all_tasks() {
+        if jid(t) == task_id {
+            d = due_date.strip();
+            if not d {
+                d = t.due_date;
+            }
+            return t ++> Subtask(
+                title=title.strip(),
+                task_id=task_id,
+                due_date=d,
+                est_minutes=est_minutes,
+            );
+        }
+    }
+    return None;
+}
 
 """Every subtask across all tasks (client groups by task_id)."""
 def:protect list_subtasks -> list[Subtask] {

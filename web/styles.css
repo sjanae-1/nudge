@@ -479,6 +479,121 @@ body {
   flex: 1 1 110px;
 }
 
+/* ---------- task edit menu ("Make changes") ---------- */
+.np-editbtn {
+  margin-left: auto;
+  border: 1px solid var(--np-line);
+  background: var(--np-card);
+  color: var(--np-ink);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.24rem 0.75rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.np-editbtn:hover {
+  border-color: var(--np-accent);
+  color: var(--np-accent);
+}
+
+.np-editgrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px dashed var(--np-line);
+}
+
+.np-editgrid input,
+.np-editgrid select {
+  flex: 1 1 150px;
+  border: 1px solid var(--np-line);
+  border-radius: 9px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--np-ink);
+  background: var(--np-card);
+}
+
+.np-editgrid input.np-f-name {
+  flex: 2 1 260px;
+  font-weight: 600;
+}
+
+.np-editgrid input.np-f-time {
+  flex: 0 1 130px;
+}
+
+.np-editgrid input[type="number"].np-f-mday {
+  flex: 0 1 90px;
+}
+
+.np-savebtn {
+  border: none;
+  background: linear-gradient(120deg, var(--np-green), var(--np-green-dark));
+  color: #fff;
+  border-radius: 9px;
+  padding: 0.5rem 1.1rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.np-savebtn:hover {
+  filter: brightness(1.06);
+}
+
+/* ---------- manual step input ---------- */
+.np-newstep {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem 0;
+}
+
+.np-stepin {
+  flex: 1;
+  border: 1px solid var(--np-line);
+  border-radius: 9px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.np-stepadd {
+  border: 1px solid var(--np-line);
+  background: var(--np-accent-soft);
+  color: var(--np-accent);
+  border-radius: 9px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---------- calendar: back to today ---------- */
+.np-caltoday {
+  border: 1px solid var(--np-line);
+  background: var(--np-card);
+  color: var(--np-ink);
+  border-radius: 8px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.np-caltoday:hover {
+  border-color: var(--np-accent);
+  color: var(--np-accent);
+}
+
 .np-due {
   font-size: 0.75rem;
   color: var(--np-mute);

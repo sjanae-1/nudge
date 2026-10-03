@@ -25,6 +25,7 @@ import from core.api {
     toggle_subtask,
     update_subtask,
     delete_subtask,
+    create_subtask,
     rollover_status,
     breakdown,
     ics_download_url,
@@ -47,6 +48,17 @@ glob MONTHS: list[str] = [
     "October",
     "November",
     "December"
+];
+
+"""Day-of-week options for the repeat selects [label, value]."""
+glob DAY_OPTS: list[any] = [
+    ["Monday", "0"],
+    ["Tuesday", "1"],
+    ["Wednesday", "2"],
+    ["Thursday", "3"],
+    ["Friday", "4"],
+    ["Saturday", "5"],
+    ["Sunday", "6"]
 ];
 
 """Preset rainbow palette offered for folder colors."""
@@ -179,8 +191,9 @@ def idiv(a: int, b: int) -> int {
     return int(a / b);
 }
 
-"""Weekday name for a yyyy-mm-dd date (pure integer math, client-safe)."""
-def weekday_name(s: str) -> str {
+"""Weekday index (0=Monday..6=Sunday) for yyyy-mm-dd -- pure integer
+math, client-safe, mirrors Python's date.weekday()."""
+def weekday_idx(s: str) -> int {
     p = s.split("-");
     y = int(p[0]);
     m = int(p[1]);
@@ -191,49 +204,35 @@ def weekday_name(s: str) -> str {
     doy = idiv(153 * (m + (-3 if m > 2 else 9)) + 2, 5) + d - 1;
     doe = yoe * 365 + idiv(yoe, 4) - idiv(yoe, 100) + doy;
     days = era * 146097 + doe - 719468;
-    names = [
-        "Monday", "Tuesday", "Wednesday", "Thursday",
-        "Friday", "Saturday", "Sunday"
-    ];
-    return names[(days + 3) % 7];
+    return (days + 3) % 7;
 }
 
-"""12-hour label for an HH:MM string ("13:00" -> "1:00 PM")."""
-def hm(s: str) -> str {
-    p = s.split(":");
-    hh = int(p[0]);
-    mm = "00";
-    if len(p) > 1 and p[1] {
-        mm = p[1];
+"""Encode the repeat controls into a recurrence rule string (the server
+validates the shapes; "" means no repeat)."""
+def encode_rule(kind: str, wday: str, mmode: str, mday: str, due: str) -> str {
+    if kind == "" {
+        return "";
     }
-    h12 = hh % 12;
-    if h12 == 0 {
-        h12 = 12;
+    if kind == "daily" or kind == "weekdays" {
+        return kind;
     }
-    return str(h12) + ":" + mm + (" AM" if hh < 12 else " PM");
-}
-
-"""Time range; single meridiem when both halves share it."""
-def hm_range(a: str, b: str) -> str {
-    ha = int(a.split(":")[0]);
-    hb = int(b.split(":")[0]);
-    if (ha < 12) == (hb < 12) {
-        return hm(a).replace(" PM", "").replace(" AM", "") + "-" + hm(b);
+    if kind == "weekly" {
+        return "weekly:" + wday;
     }
-    return hm(a) + " - " + hm(b);
-}
-
-"""Human recurrence label: 'every Sunday 1:00-3:00 PM'."""
-def recur_text(t: any) -> str {
-    s = "every " + weekday_name(t.due_date);
-    if t.start_time and t.end_time {
-        s = s + " " + hm_range(t.start_time, t.end_time);
-    } else {
-        if t.start_time {
-            s = s + " " + hm(t.start_time);
+    if kind == "monthly" {
+        if mmode == "first" {
+            return "monthly-first:" + wday;
         }
+        return "monthly-date:" + mday;
     }
-    return s;
+    if kind == "annual" {
+        p = due.split("-");
+        if len(p) == 3 {
+            return "annual:" + p[1] + "-" + p[2];
+        }
+        return "annual";
+    }
+    return "";
 }
 
 """True when a bridge failure means the session token is dead (stale
@@ -259,9 +258,23 @@ def:pub Planner -> JsxPage {
         new_folder: str = "Miscellaneous",
         new_location: str = "",
         new_priority: str = "medium",
-        new_recur: str = "",
+        new_kind: str = "",
+        new_wday: str = "6",
+        new_mmode: str = "first",
+        new_mday: str = "1",
         new_start: str = "13:00",
         new_end: str = "15:00",
+        ed_title: str = "",
+        ed_due: str = "",
+        ed_prio: str = "medium",
+        ed_loc: str = "",
+        ed_kind: str = "",
+        ed_wday: str = "6",
+        ed_mmode: str = "first",
+        ed_mday: str = "1",
+        ed_start: str = "",
+        ed_end: str = "",
+        new_step: str = "",
         show_meta: bool = False,
         new_folder_name: str = "",
         expanded: str = "",
@@ -356,14 +369,16 @@ def:pub Planner -> JsxPage {
                 folder_name=new_folder,
                 location=new_location,
                 priority=new_priority,
-                recurrence=new_recur,
-                start_time=(new_start if new_recur else ""),
-                end_time=(new_end if new_recur else "")
+                recurrence=encode_rule(
+                    new_kind, new_wday, new_mmode, new_mday, new_due.strip()
+                ),
+                start_time=(new_start if new_kind else ""),
+                end_time=(new_end if new_kind else "")
             );
             new_title = "";
             new_location = "";
             new_priority = "medium";
-            new_recur = "";
+            new_kind = "";
             show_meta = False;
             # Surface any AI-created steps for the task we just added.
             await do_expand(jid(t));
@@ -462,6 +477,14 @@ def:pub Planner -> JsxPage {
         cal_y = y;
     }
 
+    def cal_jump_today {
+        if today {
+            p = today.split("-");
+            cal_y = int(p[0]);
+            cal_m = int(p[1]);
+        }
+    }
+
     def do_logout {
         jacLogout();
         leave = True;
@@ -477,6 +500,43 @@ def:pub Planner -> JsxPage {
         expanded = id;
         ics_one = "";
         cal_menu = "";
+        # Seed the edit form from this task's current fields.
+        for t in tasks {
+            if jid(t) == id {
+                ed_title = t.title;
+                ed_due = t.due_date;
+                ed_prio = t.priority;
+                ed_loc = t.location;
+                ed_start = t.start_time;
+                ed_end = t.end_time;
+                ed_kind = "";
+                ed_wday = "6";
+                ed_mmode = "first";
+                ed_mday = "1";
+                r = t.recurrence;
+                if r == "daily" {
+                    ed_kind = "daily";
+                } elif r == "weekdays" {
+                    ed_kind = "weekdays";
+                } elif r == "weekly" {
+                    ed_kind = "weekly";
+                    ed_wday = str(weekday_idx(t.due_date));
+                } elif "weekly:" in r {
+                    ed_kind = "weekly";
+                    ed_wday = r.split(":")[1];
+                } elif "monthly-first:" in r {
+                    ed_kind = "monthly";
+                    ed_mmode = "first";
+                    ed_wday = r.split(":")[1];
+                } elif "monthly-date:" in r {
+                    ed_kind = "monthly";
+                    ed_mmode = "day";
+                    ed_mday = r.split(":")[1];
+                } elif "annual" in r {
+                    ed_kind = "annual";
+                }
+            }
+        }
         try {
             ics_one = await task_ics_download_url(id=id);
         } except Exception as e {
@@ -523,13 +583,55 @@ def:pub Planner -> JsxPage {
         }
     }
 
-    async def do_set_priority(id: str, pri: str) {
+    """Apply the edit form (name, due, priority, location, repeat, time)
+to one task."""
+    async def do_save_edit(id: str) {
         error = "";
+        if not ed_title.strip() {
+            error = "Give the task a title";
+            return;
+        }
+        if len(ed_due) != 10 {
+            error = "Due date must be yyyy-mm-dd";
+            return;
+        }
+        busy = "edit";
         try {
-            await update_task(id=id, priority=pri);
+            await update_task(
+                id=id,
+                title=ed_title,
+                due_date=ed_due,
+                priority=ed_prio,
+                location=ed_loc,
+                recurrence=encode_rule(
+                    ed_kind, ed_wday, ed_mmode, ed_mday, ed_due
+                ),
+                start_time=(ed_start if ed_kind else ""),
+                end_time=(ed_end if ed_kind else "")
+            );
             await refresh();
         } except Exception as e {
             error = str(e);
+        } finally {
+            busy = "";
+        }
+    }
+
+    """Add a step by hand from the task menu (no AI needed)."""
+    async def do_add_step(id: str) {
+        error = "";
+        if not new_step.strip() {
+            return;
+        }
+        busy = "step";
+        try {
+            await create_subtask(task_id=id, title=new_step);
+            new_step = "";
+            subs = await list_subtasks();
+        } except Exception as e {
+            error = str(e);
+        } finally {
+            busy = "";
         }
     }
 
@@ -1090,6 +1192,13 @@ def:pub Planner -> JsxPage {
                             >
                                 ›
                             </button>
+                            <button
+                                class="np-caltoday"
+                                title="Jump back to the current month"
+                                onClick={lambda { cal_jump_today(); }}
+                            >
+                                Today
+                            </button>
                             {(<a
                                 class="np-ics"
                                 href={ics_url}
@@ -1198,15 +1307,63 @@ def:pub Planner -> JsxPage {
                                         <option value="low">LOW PRIORITY</option>
                                     </select>
                                     <select
-                                        value={new_recur}
+                                        value={new_kind}
                                         title="Repeat"
                                         onChange={lambda (e: ChangeEvent) {
-                                            new_recur = e.target.value;
+                                            new_kind = e.target.value;
                                         }}
                                     >
                                         <option value="">NO REPEAT</option>
-                                        <option value="weekly">EVERY WEEK</option>
+                                        <option value="daily">EVERY DAY</option>
+                                        <option value="weekdays">EVERY WEEKDAY (MON-FRI)</option>
+                                        <option value="weekly">EVERY WEEK ON...</option>
+                                        <option value="monthly">EVERY MONTH...</option>
+                                        <option value="annual">EVERY YEAR (ON DUE DATE)</option>
                                     </select>
+                                    {(<select
+                                        value={new_wday}
+                                        title="Weekday"
+                                        onChange={lambda (e: ChangeEvent) {
+                                            new_wday = e.target.value;
+                                        }}
+                                    >
+                                        {[
+                                            <option key={p[0]} value={p[1]}>{p[0]}</option>
+                                            for p in DAY_OPTS
+                                        ]}
+                                    </select>) if new_kind == "weekly" else None}
+                                    {(<select
+                                        value={new_mmode}
+                                        title="Monthly rule"
+                                        onChange={lambda (e: ChangeEvent) {
+                                            new_mmode = e.target.value;
+                                        }}
+                                    >
+                                        <option value="first">FIRST ...DAY OF MONTH</option>
+                                        <option value="day">SAME DAY OF MONTH</option>
+                                    </select>) if new_kind == "monthly" else None}
+                                    {(<select
+                                        value={new_wday}
+                                        title="Weekday"
+                                        onChange={lambda (e: ChangeEvent) {
+                                            new_wday = e.target.value;
+                                        }}
+                                    >
+                                        {[
+                                            <option key={p[0]} value={p[1]}>{p[0]}</option>
+                                            for p in DAY_OPTS
+                                        ]}
+                                    </select>) if new_kind == "monthly" and new_mmode == "first" else None}
+                                    {(<input
+                                        type="number"
+                                        min="1"
+                                        max="31"
+                                        value={new_mday}
+                                        title="Day of month"
+                                        onChange={lambda (e: ChangeEvent) {
+                                            new_mday = e.target.value;
+                                        }}
+                                    />) if new_kind == "monthly" and new_mmode == "day" else None}
                                     {(<div class="np-recur-times">
                                         <input
                                             value={new_start}
@@ -1224,7 +1381,7 @@ def:pub Planner -> JsxPage {
                                             }}
                                             placeholder="ends 15:00"
                                         />
-                                    </div>) if new_recur == "weekly" else None}
+                                    </div>) if new_kind != "" else None}
                                 </div>) if show_meta else None}
                                 {(<div class="np-newtype">
                                     <input
@@ -1300,7 +1457,7 @@ def:pub Planner -> JsxPage {
                                                     "np-title "
                                                         + ("np-done" if t.completed else "")
                                                 }
-                                                title="Show details"
+                                                title="Open the edit menu"
                                                 onClick={lambda { do_expand(jid(t)); }}
                                             >
                                                 {t.title}
@@ -1310,25 +1467,20 @@ def:pub Planner -> JsxPage {
                                                 style={{"backgroundColor": folder_color(t.folder_name)}}
                                             >
                                                 {t.folder_name}
-                                            </span>                                            <span class={
+                                            </span>
+                                            <span class={
                                                     "np-due "
                                                         + ("np-due-today" if today and t.due_date <= ymd_add(today, buf_days) else "")
                                                 }
                                             >
                                                 {t.due_date}
                                             </span>
-                                            {(<span
-                                                class="np-recur"
-                                                title="Repeating task -- completing it rolls to the next occurrence"
-                                            >
-                                                {"↻ " + recur_text(t)}
-                                            </span>) if t.recurrence else None}
                                             <button
-                                                class="np-caret"
-                                                title="Details"
+                                                class="np-editbtn"
+                                                title="Edit name, date, priority, location, time and repeat"
                                                 onClick={lambda { do_expand(jid(t)); }}
                                             >
-                                                {("▴" if expanded == jid(t) else "▾")}
+                                                {("Close" if expanded == jid(t) else "Make changes")}
                                             </button>
                                         </div>
                                         {(<div class="np-detail">
@@ -1343,30 +1495,135 @@ def:pub Planner -> JsxPage {
                                                     📍 {t.location}
                                                 </a>
                                             </div>) if t.location else None}
-                                            {(<div class="np-meta">
-                                                <span
-                                                    class="np-recur"
-                                                    title="Repeating task -- completing it rolls to the next occurrence"
-                                                >
-                                                    {"↻ " + recur_text(t)}
-                                                </span>
-                                            </div>) if t.recurrence else None}
-                                            <div class="np-actions">
-                                                <select
-                                                    class="np-pri-sel"
-                                                    title="Set priority"
-                                                    value={t.priority}
+                                            <div class="np-editgrid">
+                                                <input
+                                                    class="np-f-name"
+                                                    value={ed_title}
+                                                    title="Task name"
                                                     onChange={lambda (e: ChangeEvent) {
-                                                        do_set_priority(jid(t), e.target.value);
+                                                        ed_title = e.target.value;
+                                                    }}
+                                                />
+                                                <input
+                                                    type="date"
+                                                    class="np-f-due"
+                                                    value={ed_due}
+                                                    title="Due date"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_due = e.target.value;
+                                                    }}
+                                                />
+                                                <select
+                                                    class="np-f-pri"
+                                                    value={ed_prio}
+                                                    title="Priority"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_prio = e.target.value;
                                                     }}
                                                 >
                                                     <option value="high">HIGH PRIORITY</option>
                                                     <option value="medium">MEDIUM PRIORITY</option>
                                                     <option value="low">LOW PRIORITY</option>
                                                 </select>
+                                                <input
+                                                    class="np-f-loc"
+                                                    value={ed_loc}
+                                                    placeholder="Location"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_loc = e.target.value;
+                                                    }}
+                                                />
+                                                <select
+                                                    class="np-f-kind"
+                                                    value={ed_kind}
+                                                    title="Repeat"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_kind = e.target.value;
+                                                    }}
+                                                >
+                                                    <option value="">NO REPEAT</option>
+                                                    <option value="daily">EVERY DAY</option>
+                                                    <option value="weekdays">EVERY WEEKDAY (MON-FRI)</option>
+                                                    <option value="weekly">EVERY WEEK ON...</option>
+                                                    <option value="monthly">EVERY MONTH...</option>
+                                                    <option value="annual">EVERY YEAR (ON DUE DATE)</option>
+                                                </select>
+                                                {(<select
+                                                    class="np-f-wday"
+                                                    value={ed_wday}
+                                                    title="Weekday"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_wday = e.target.value;
+                                                    }}
+                                                >
+                                                    {[
+                                                        <option key={p[0]} value={p[1]}>{p[0]}</option>
+                                                        for p in DAY_OPTS
+                                                    ]}
+                                                </select>) if ed_kind == "weekly" else None}
+                                                {(<select
+                                                    class="np-f-mmode"
+                                                    value={ed_mmode}
+                                                    title="Monthly rule"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_mmode = e.target.value;
+                                                    }}
+                                                >
+                                                    <option value="first">FIRST ...DAY OF MONTH</option>
+                                                    <option value="day">SAME DAY OF MONTH</option>
+                                                </select>) if ed_kind == "monthly" else None}
+                                                {(<select
+                                                    class="np-f-wday"
+                                                    value={ed_wday}
+                                                    title="Weekday"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_wday = e.target.value;
+                                                    }}
+                                                >
+                                                    {[
+                                                        <option key={p[0]} value={p[1]}>{p[0]}</option>
+                                                        for p in DAY_OPTS
+                                                    ]}
+                                                </select>) if ed_kind == "monthly" and ed_mmode == "first" else None}
+                                                {(<input
+                                                    type="number"
+                                                    min="1"
+                                                    max="31"
+                                                    class="np-f-mday"
+                                                    value={ed_mday}
+                                                    title="Day of month"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_mday = e.target.value;
+                                                    }}
+                                                />) if ed_kind == "monthly" and ed_mmode == "day" else None}
+                                                <input
+                                                    class="np-f-time"
+                                                    value={ed_start}
+                                                    placeholder="starts 13:00"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_start = e.target.value;
+                                                    }}
+                                                />
+                                                <input
+                                                    class="np-f-time"
+                                                    value={ed_end}
+                                                    placeholder="ends 15:00"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        ed_end = e.target.value;
+                                                    }}
+                                                />
+                                                <button
+                                                    class="np-savebtn"
+                                                    title="Save changes"
+                                                    onClick={lambda { do_save_edit(jid(t)); }}
+                                                >
+                                                    Save changes
+                                                </button>
+                                            </div>
+                                            <div class="np-actions">
                                                 <button
                                                     class="np-ai"
-                                                    title="AI breakdown"
+                                                    title="AI breakdown into micro-steps"
                                                     onClick={lambda {
                                                         if not busy {
                                                             do_breakdown(jid(t));
@@ -1375,7 +1632,7 @@ def:pub Planner -> JsxPage {
                                                 >
                                                     {("… thinking"
                                                         if busy == jid(t)
-                                                        else "break down")}
+                                                        else "AI Breakdown")}
                                                 </button>
                                                 <div class="np-caldrop">
                                                     <button
@@ -1419,9 +1676,32 @@ def:pub Planner -> JsxPage {
                                             </div>)
                                                 if busy and busy == jid(t)
                                                 else None}
+                                            <div class="np-newstep">
+                                                <input
+                                                    class="np-stepin"
+                                                    value={new_step}
+                                                    placeholder="Add a step by hand (no AI needed)"
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        new_step = e.target.value;
+                                                    }}
+                                                    onKeyDown={lambda (e: KeyboardEvent) {
+                                                        if e.key == "Enter" and new_step.strip() {
+                                                            do_add_step(jid(t));
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    class="np-stepadd"
+                                                    onClick={lambda {
+                                                        do_add_step(jid(t));
+                                                    }}
+                                                >
+                                                    Add step
+                                                </button>
+                                            </div>
                                             <div class="np-subs">
                                                 {(<span class="np-sub-hint">
-                                                    No steps yet -- hit "break down"
+                                                    No steps yet -- add one above or hit "AI Breakdown"
                                                 </span>) if len(task_subs(jid(t))) == 0
                                                     else [
                                                             {(<div
