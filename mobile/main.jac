@@ -481,7 +481,9 @@ def:pub app -> JsxElement {
     if not jacIsLoggedIn() {
         return
             <ScrollView style={styles.screen} contentContainerStyle={styles.authWrap}>
-                <Text style={styles.brand}>Nudge</Text>
+                <Text style={styles.brand}>
+                    <Text style={{"color": "#171a2b"}}>N</Text><Text style={{"color": "#252559"}}>u</Text><Text style={{"color": "#333088"}}>d</Text><Text style={{"color": "#413ab7"}}>g</Text><Text style={{"color": "#4f46e5"}}>e</Text>
+                </Text>
                 <Text style={styles.tagline}>
                     Personal Planning App built for College Students
                 </Text>
@@ -553,8 +555,10 @@ def:pub app -> JsxElement {
         >
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.brand}>Nudge</Text>
-                    <Text style={styles.tagline}>your day, nudged along</Text>
+                    <Text style={styles.brand}>
+                        <Text style={{"color": "#171a2b"}}>N</Text><Text style={{"color": "#252559"}}>u</Text><Text style={{"color": "#333088"}}>d</Text><Text style={{"color": "#413ab7"}}>g</Text><Text style={{"color": "#4f46e5"}}>e</Text>
+                    </Text>
+                    <Text style={styles.tagline}>Personal Planning App built for College Students</Text>
                 </View>
                 <Pressable style={styles.signout} onPress={lambda { logout(); }}>
                     <Text style={styles.signoutText}>Sign out</Text>

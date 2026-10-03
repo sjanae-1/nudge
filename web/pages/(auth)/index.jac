@@ -251,7 +251,7 @@ def:pub Planner -> JsxPage {
         subs: list[any] = [],
         today: str = "",
         quick: str = "today",
-        folder_filter: str = "",
+        filters: list[str] = [],
         buf_days: int = 3,
         new_title: str = "",
         new_due: str = "",
@@ -463,7 +463,7 @@ def:pub Planner -> JsxPage {
             special = "";
             cal_menu = "";
             try {
-                ics_url = await ics_download_url(folder=folder_filter);
+                ics_url = await ics_download_url(folders=filters);
             } except Exception as e {
                 error = str(e);
             }
@@ -566,8 +566,8 @@ def:pub Planner -> JsxPage {
         error = "";
         try {
             await delete_folder(name=name);
-            if folder_filter == name {
-                folder_filter = "";
+            if name in filters {
+                filters = [f for f in filters if f != name];
             }
             if new_folder == name {
                 new_folder = "Miscellaneous";
@@ -587,14 +587,21 @@ def:pub Planner -> JsxPage {
         }
     }
 
-    """Folder filter -- also refreshes the calendar's folder-scoped .ics."""
+    """Folder filter toggle -- pick any number of folders (none selected
+    = all folders). Also refreshes the calendar's folder-scoped .ics."""
     async def set_folder(name: str) {
-        folder_filter = name;
+        if not name {
+            filters = [];
+        } elif name in filters {
+            filters = [f for f in filters if f != name];
+        } else {
+            filters = filters + [name];
+        }
         special = "";
         color_for = "";
         if cal {
             try {
-                ics_url = await ics_download_url(folder=name);
+                ics_url = await ics_download_url(folders=filters);
             } except Exception as e {
                 error = str(e);
             }
@@ -814,7 +821,7 @@ to one task."""
             if t.completed {
                 continue;
             }
-            if folder_filter and t.folder_name != folder_filter {
+            if filters and t.folder_name not in filters {
                 continue;
             }
             if quick != "all" and t.due_date > cutoff {
@@ -830,6 +837,15 @@ to one task."""
             return len(trash);
         }
         return len(visible_tasks());
+    }
+
+    """" + "names of the selected folder filters, joined for labels."""
+    def filter_summary -> str {
+        out = "";
+        for n in filters {
+            out = (out + " + " + n) if out else n;
+        }
+        return out;
     }
 
     def folder_color(name: str) -> str {
@@ -900,7 +916,7 @@ to one task."""
         for t in tasks {
             if t.due_date == ymd and not t.completed {
                 keep = True;
-                if folder_filter and t.folder_name != folder_filter {
+                if filters and t.folder_name not in filters {
                     keep = False;
                 }
                 if keep {
@@ -925,9 +941,11 @@ to one task."""
                         style={{"backgroundColor": folder_color(t.folder_name)}}
                         title={t.title}
                         onClick={lambda {
-                            quick = "all";
-                            folder_filter = "";
-                            cal = False;
+                    quick = "all";
+                    if filters and t.folder_name not in filters {
+                        filters = [];
+                    }
+                    cal = False;
                             do_expand(jid(t));
                         }}
                     >
@@ -1040,7 +1058,7 @@ to one task."""
                     </div>
                     {(<button
                         key="__all"
-                        class={"np-chip " + ("np-chip-on" if not folder_filter else "")}
+                        class={"np-chip " + ("np-chip-on" if not filters else "")}
                         onClick={lambda { set_folder(""); }}
                     >
                         All folders
@@ -1050,7 +1068,7 @@ to one task."""
                             <button
                                 class={
                                     "np-chip "
-                                        + ("np-chip-on" if folder_filter == f.name else "")
+                                        + ("np-chip-on" if f.name in filters else "")
                                 }
                                 onClick={lambda { set_folder(f.name); }}
                             >
@@ -1129,7 +1147,7 @@ to one task."""
                         }
                         onClick={lambda {
                             special = "done";
-                            folder_filter = "";
+                            filters = [];
                         }}
                     >
                         Done
@@ -1141,7 +1159,7 @@ to one task."""
                         }
                         onClick={lambda {
                             special = "deleted";
-                            folder_filter = "";
+                            filters = [];
                         }}
                     >
                         Deleted
@@ -1184,8 +1202,8 @@ to one task."""
                         {(<span class="np-count">
                             {str(shown_count())
                                 + " shown"
-                                + (" · folder: " + folder_filter)
-                                if folder_filter
+                                + (" · folders: " + filter_summary())
+                                if filters
                                 else str(shown_count()) + " shown"}
                         </span>)
                             if not cal
@@ -1224,21 +1242,21 @@ to one task."""
                                 class="np-ics"
                                 href={ics_url}
                                 download="nudge.ics"
-                                title="Importable .ics -- scoped to the selected folder"
+                                title="Importable .ics -- scoped to the selected folders"
                             >
-                                {("Download .ics (" + folder_filter + ")"
-                                    if folder_filter
+                                {("Download .ics (" + filter_summary() + ")"
+                                    if filters
                                     else "Download .ics")}
                             </a>)
                                 if ics_url
                                 else None}
                         </div>
                         <div class="np-calhint">
-                            {("Showing only \""
-                                + folder_filter
-                                + "\" -- Download .ics exports just this folder."
-                                if folder_filter
-                                else "Filter these events with the folder list on the left -- Download .ics exports only the folder you pick.")}
+                            {("Showing only "
+                                + filter_summary()
+                                + " -- Download .ics exports only these folders."
+                                if filters
+                                else "Filter events with the folder list on the left to download .ics exports with only the selected folders.")}
                         </div>
                         <div class="np-calgrid np-calwd">
                             {[

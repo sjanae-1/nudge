@@ -929,21 +929,19 @@ def:protect breakdown(id: str) -> list[Subtask] {
 """Escape a value for iCalendar text content."""
 def:priv ics_escape(raw: str) -> str {
     return raw.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n");
-}
-
-"""Incomplete tasks as an all-day-event iCalendar feed (RFC 5545).
+}"""Incomplete tasks as an all-day-event iCalendar feed (RFC 5545).
 
 Importable directly into Google Calendar (Settings > Import) and macOS
 Calendar (File > Import), or any other ICS-consuming calendar app.
-Pass a folder name to export only that folder's tasks.
-"""
-def:protect ics_feed(folder: str = "") -> str {
+Pass folder names to export only those folders' tasks (empty = all
+folders)."""
+def:protect ics_feed(folders: list[str] = []) -> str {
     out = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Nudge//Personal Planner//EN\r\nCALSCALE:GREGORIAN\r\n";
     for t in all_tasks() {
         if t.completed {
             continue;
         }
-        if folder and t.folder_name != folder {
+        if folders and t.folder_name not in folders {
             continue;
         }
         try {
@@ -965,9 +963,10 @@ def:protect ics_feed(folder: str = "") -> str {
     return out;
 }
 
-"""The ICS feed as a ready-to-use data: URI (client uses it as an <a href>)."""
-def:protect ics_download_url(folder: str = "") -> str {
-    return "data:text/calendar;charset=utf-8," + quote(ics_feed(folder));
+"""The ICS feed as a ready-to-use data: URI (client uses it as an <a
+href>). Pass folder names to scope the export to those folders."""
+def:protect ics_download_url(folders: list[str] = []) -> str {
+    return "data:text/calendar;charset=utf-8," + quote(ics_feed(folders));
 }
 
 """A one-event .ics data: URI for a single task.

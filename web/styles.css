@@ -1613,10 +1613,11 @@ button.np-gcal {
   color: var(--np-mute);
 }
 
-/* calendar: explains folder filtering + folder-scoped .ics import */
+/* calendar: explains folder filtering + folder-scoped .ics import.
+   Extra bottom margin separates it from the grid below. */
 .np-calhint {
   font-size: 0.78rem;
   color: var(--np-mute);
   font-style: italic;
-  margin: 0.35rem 0 0.15rem;
+  margin: 0.5rem 0 1rem;
 }
