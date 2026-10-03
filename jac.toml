@@ -33,6 +33,16 @@ react-dom = "^19.2.0"
 react-native-web = "^0.19.13"
 zod = "^4.3.6"
 
+# Mobile app on the web platform (react-native-web preview): the shared
+# client runtime imports these; scoped to mobile so the web app is untouched.
+[dependencies.npm.mobile]
+"@react-navigation/native" = "^7.1.14"
+"@react-navigation/native-stack" = "^7.3.21"
+"expo-constants" = "~57.0.17"
+"expo-secure-store" = "~57.0.3"
+"react-hook-form" = "^7.54.0"
+"@hookform/resolvers" = "^3.10.0"
+
 [dependencies.npm.dev]
 vite = "^6.4.3"
 "@vitejs/plugin-react" = "^4.7.0"

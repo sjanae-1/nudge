@@ -153,8 +153,22 @@ def:priv clamp_due(raw: str, latest: str) -> str {
     return d;
 }
 
+"""Next occurrence of a recurring task: step past the current due date
+until it lands on/after today, preserving the weekday (7 days for
+weekly)."""
+def:priv next_occurrence(t: Task, today: str) -> str {
+    step = 7 if t.recurrence == "weekly" else 1;
+    td = date.fromisoformat(today);
+    nd = date.fromisoformat(t.due_date) + timedelta(days=step);
+    while nd < td {
+        nd = nd + timedelta(days=step);
+    }
+    return str(nd);
+}
+
 """Shift every past-due incomplete task to today. Returns count shifted.
 
+Recurring tasks step to their next occurrence instead of clamping.
 Incomplete subtasks with a past-due date shift too (silently), so the
 AI-paced step deadlines keep pacing instead of going stale.
 """
@@ -163,7 +177,11 @@ def:priv run_rollover -> int {
     shifted = 0;
     for t in all_tasks() {
         if not t.completed and t.due_date < today {
-            t.due_date = today;
+            if t.recurrence {
+                t.due_date = next_occurrence(t, today);
+            } else {
+                t.due_date = today;
+            }
             shifted = shifted + 1;
         }
         for s in [t-->][?:Subtask] {
@@ -207,6 +225,21 @@ def:priv seed_workspace {
         due_date=str(date.fromisoformat(today) + timedelta(days=4)),
         folder_name="EECS 449",
         priority="high",
+        created_at=today
+    );
+    # Recurring example: every Sunday 1:00-3:00 PM (due date = next Sunday).
+    f_eecs ++> Task(
+        title="EECS 449 Project Team Catchup",
+        due_date=str(
+            date.fromisoformat(today)
+                + timedelta(days=(6 - date.fromisoformat(today).weekday()) % 7)
+        ),
+        folder_name="EECS 449",
+        location="Duderstadt Center",
+        priority="medium",
+        recurrence="weekly",
+        start_time="13:00",
+        end_time="15:00",
         created_at=today
     );
     f_misc ++> Task(
@@ -382,12 +415,19 @@ def:protect add_task(
     folder_name: str = "Miscellaneous",
     location: str = "",
     priority: str = "medium",
+    recurrence: str = "",
+    start_time: str = "",
+    end_time: str = "",
 ) -> Task {
     if not title.strip() {
         raise ValueError("title is required");
     }
     if not due_date.strip() {
         raise ValueError("due_date is mandatory (yyyy-mm-dd)");
+    }
+    rec = recurrence.strip().lower();
+    if rec and rec != "weekly" {
+        raise ValueError("recurrence must be 'weekly'");
     }
     folder = folder_named(folder_name.strip() or "Miscellaneous");
     task = folder ++> Task(
@@ -396,16 +436,25 @@ def:protect add_task(
         folder_name=folder.name,
         location=location,
         priority=priority,
+        recurrence=rec,
+        start_time=start_time.strip(),
+        end_time=end_time.strip(),
         created_at=today_str(),
     );
     auto_split(task);
     return task;
 }
 
-"""Toggle a task's completed state."""
+"""Toggle a task's completed state. A recurring task never stays
+checked: completing it means this occurrence is done, so it rolls
+straight to its next occurrence (same weekday) instead."""
 def:protect complete_task(id: str) -> Task | None {
     for t in all_tasks() {
         if jid(t) == id {
+            if t.recurrence {
+                t.due_date = next_occurrence(t, today_str());
+                return t;
+            }
             t.completed = not t.completed;
             return t;
         }

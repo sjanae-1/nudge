@@ -94,6 +94,67 @@ def ymd_add(s: str, n: int) -> str {
     return str(y) + "-" + pad2(m) + "-" + pad2(d);
 }
 
+def idiv(a: int, b: int) -> int {
+    return int(a / b);
+}
+
+"""Weekday name for a yyyy-mm-dd date (pure integer math, client-safe)."""
+def weekday_name(s: str) -> str {
+    p = s.split("-");
+    y = int(p[0]);
+    m = int(p[1]);
+    d = int(p[2]);
+    yy = y - (1 if m <= 2 else 0);
+    era = idiv(yy if yy >= 0 else yy - 399, 400);
+    yoe = yy - era * 400;
+    doy = idiv(153 * (m + (-3 if m > 2 else 9)) + 2, 5) + d - 1;
+    doe = yoe * 365 + idiv(yoe, 4) - idiv(yoe, 100) + doy;
+    days = era * 146097 + doe - 719468;
+    names = [
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday"
+    ];
+    return names[(days + 3) % 7];
+}
+
+"""12-hour label for an HH:MM string ("13:00" -> "1:00 PM")."""
+def hm(s: str) -> str {
+    p = s.split(":");
+    hh = int(p[0]);
+    mm = "00";
+    if len(p) > 1 and p[1] {
+        mm = p[1];
+    }
+    h12 = hh % 12;
+    if h12 == 0 {
+        h12 = 12;
+    }
+    return str(h12) + ":" + mm + (" AM" if hh < 12 else " PM");
+}
+
+"""Time range; single meridiem when both halves share it."""
+def hm_range(a: str, b: str) -> str {
+    ha = int(a.split(":")[0]);
+    hb = int(b.split(":")[0]);
+    if (ha < 12) == (hb < 12) {
+        return hm(a).replace(" PM", "").replace(" AM", "") + "-" + hm(b);
+    }
+    return hm(a) + " - " + hm(b);
+}
+
+"""Human recurrence label: 'every Sunday 1:00-3:00 PM'."""
+def recur_text(t: any) -> str {
+    s = "every " + weekday_name(t.due_date);
+    if t.start_time and t.end_time {
+        s = s + " " + hm_range(t.start_time, t.end_time);
+    } else {
+        if t.start_time {
+            s = s + " " + hm(t.start_time);
+        }
+    }
+    return s;
+}
+
 """True when a bridge failure means the session token is dead (stale
 account / reset store) -- the UI should sign out, not show raw JSON."""
 def is_auth_error(msg: str) -> bool {
@@ -112,7 +173,9 @@ glob styles = StyleSheet.create({
     "header": {"flexDirection": "row", "alignItems": "center", "justifyContent": "space-between"},
     "brand": {"fontSize": 28, "fontWeight": "bold", "color": "#171a2b", "letterSpacing": -0.5},
     "tagline": {"fontSize": 13, "color": "#7a7f99", "fontStyle": "italic"},
-    "stats": {"fontSize": 13, "color": "#556", "fontWeight": "600"},
+    "stats": {"fontSize": 13, "color": "#7b8098", "fontWeight": "600"},
+    "statNum": {"color": "#171a2b", "fontWeight": "800"},
+    "statDone": {"color": "#16a34a", "fontWeight": "800"},
     "card": {
         "backgroundColor": "#ffffff",
         "borderRadius": 16,
@@ -147,13 +210,20 @@ glob styles = StyleSheet.create({
         "backgroundColor": "#ffffff"
     },
     "primary": {
-        "backgroundColor": "#4f46e5",
+        "backgroundColor": "#16a34a",
         "borderRadius": 10,
         "paddingVertical": 11,
         "paddingHorizontal": 18,
         "alignItems": "center"
     },
     "primaryText": {"color": "#ffffff", "fontSize": 15, "fontWeight": "bold"},
+    "authBtn": {
+        "backgroundColor": "#636efa",
+        "borderRadius": 10,
+        "paddingVertical": 11,
+        "paddingHorizontal": 18,
+        "alignItems": "center"
+    },
     "link": {"color": "#4f46e5", "fontSize": 14, "textAlign": "center", "fontWeight": "600"},
     "err": {"color": "#dc2626", "fontSize": 13, "textAlign": "center"},
     "chipRow": {"gap": 8, "paddingVertical": 2},
@@ -168,14 +238,14 @@ glob styles = StyleSheet.create({
     "chipOn": {
         "borderRadius": 999,
         "borderWidth": 1,
-        "borderColor": "#171a2b",
-        "backgroundColor": "#171a2b",
+        "borderColor": "#4f46e5",
+        "backgroundColor": "#4f46e5",
         "paddingVertical": 6,
         "paddingHorizontal": 12
     },
     "chipText": {"fontSize": 13, "color": "#171a2b", "fontWeight": "500"},
     "chipTextOn": {"fontSize": 13, "color": "#ffffff", "fontWeight": "600"},
-    "section": {"fontSize": 12, "fontWeight": "bold", "color": "#7a7f99", "textTransform": "uppercase", "marginTop": 6},
+    "section": {"fontSize": 12, "fontWeight": "bold", "color": "#171a2b", "textTransform": "uppercase", "marginTop": 6},
     "row": {
         "flexDirection": "row",
         "alignItems": "center",
@@ -190,7 +260,35 @@ glob styles = StyleSheet.create({
     "rowMain": {"flex": 1, "gap": 3},
     "rowTitle": {"fontSize": 15, "color": "#171a2b", "fontWeight": "600"},
     "rowTitleDone": {"fontSize": 15, "color": "#9aa0b5", "fontWeight": "600", "textDecorationLine": "line-through"},
-    "rowMeta": {"fontSize": 12, "color": "#7a7f99"},
+    "rowMeta": {"fontSize": 12, "color": "#7b8098"},
+    "metaRow": {"flexDirection": "row", "alignItems": "center", "gap": 6, "flexWrap": "wrap"},
+    "badgeText": {"fontSize": 11, "color": "#ffffff", "fontWeight": "700"},
+    "loc": {"fontSize": 12, "color": "#7b8098"},
+    "recur": {
+        "fontSize": 12,
+        "color": "#5b3fd6",
+        "backgroundColor": "#f4f0ff",
+        "borderWidth": 1,
+        "borderColor": "#e3daff",
+        "borderRadius": 999,
+        "paddingVertical": 2,
+        "paddingHorizontal": 8,
+        "fontWeight": "600",
+        "overflow": "hidden"
+    },
+    "ctrlRow": {"flexDirection": "row", "flexWrap": "wrap", "alignItems": "center", "gap": 8},
+    "timeRow": {"flexDirection": "row", "gap": 8, "flex": 1, "minWidth": 160},
+    "timeInput": {
+        "flex": 1,
+        "borderWidth": 1,
+        "borderColor": "#e7e9f2",
+        "borderRadius": 10,
+        "paddingVertical": 8,
+        "paddingHorizontal": 10,
+        "fontSize": 14,
+        "color": "#171a2b",
+        "backgroundColor": "#ffffff"
+    },
     "empty": {"fontSize": 14, "color": "#7a7f99", "fontStyle": "italic", "paddingVertical": 8},
     "signout": {
         "borderRadius": 999,
@@ -217,7 +315,10 @@ def:pub app -> JsxElement {
         folders: list[any] = [],
         new_title: str = "",
         new_due: str = "",
-        new_folder: str = "";
+        new_folder: str = "",
+        new_recur: str = "",
+        new_start: str = "13:00",
+        new_end: str = "15:00";
 
     """Pull today + folders from the shared server (bridged, protected)."""
     async def load {
@@ -325,9 +426,13 @@ def:pub app -> JsxElement {
             await add_task(
                 title=new_title.strip(),
                 due_date=new_due.strip(),
-                folder_name=new_folder
+                folder_name=new_folder,
+                recurrence=new_recur,
+                start_time=(new_start if new_recur else ""),
+                end_time=(new_end if new_recur else "")
             );
             new_title = "";
+            new_recur = "";
             await refresh();
         } except Exception as e {
             error = str(e);
@@ -409,6 +514,15 @@ def:pub app -> JsxElement {
         return n;
     }
 
+    def fcolor(name: str) -> str {
+        for f in folders {
+            if f.name == name {
+                return f.color;
+            }
+        }
+        return "#9e9e9e";
+    }
+
     # --- Not signed in: email + password screen ---
     if not jacIsLoggedIn() {
         return
@@ -439,7 +553,7 @@ def:pub app -> JsxElement {
                         if auth_err
                         else <View/>}
                     <Pressable
-                        style={styles.primary}
+                        style={styles.authBtn}
                         onPress={lambda {
                             if not auth_busy { submit(); }
                         }}
@@ -473,7 +587,7 @@ def:pub app -> JsxElement {
     if loading {
         return
             <View style={styles.center}>
-                <ActivityIndicator size="large" color="#4f46e5"/>
+                <ActivityIndicator size="large" color="#16a34a"/>
             </View>;
     }
 
@@ -556,6 +670,46 @@ def:pub app -> JsxElement {
                         for f in folders
                     ]}
                 </ScrollView>
+                <View style={styles.ctrlRow}>
+                    <Pressable
+                        style={
+                            styles.chipOn
+                                if new_recur == "weekly"
+                                else styles.chip
+                        }
+                        onPress={lambda {
+                            new_recur = (
+                                "" if new_recur == "weekly" else "weekly"
+                            );
+                        }}
+                    >
+                        <Text
+                            style={
+                                styles.chipTextOn
+                                    if new_recur == "weekly"
+                                    else styles.chipText
+                            }
+                        >
+                            {"↻ Weekly"}
+                        </Text>
+                    </Pressable>
+                    {(<View style={styles.timeRow}>
+                        <TextInput
+                            style={styles.timeInput}
+                            value={new_start}
+                            placeholder="starts 13:00"
+                            placeholderTextColor="#8a93a6"
+                            onChangeText={lambda (t: str) { new_start = t; }}
+                        />
+                        <TextInput
+                            style={styles.timeInput}
+                            value={new_end}
+                            placeholder="ends 15:00"
+                            placeholderTextColor="#8a93a6"
+                            onChangeText={lambda (t: str) { new_end = t; }}
+                        />
+                    </View>) if new_recur == "weekly" else <View/>}
+                </View>
             </View>
 
             <Text style={styles.section}>Today</Text>
@@ -563,6 +717,7 @@ def:pub app -> JsxElement {
                 <View key={jid(t)} style={styles.row}>
                     <Switch
                         value={t.completed}
+                        trackColor={{"false": "#e7e9f2", "true": "#16a34a"}}
                         onValueChange={lambda (v: bool) { do_toggle(jid(t)); }}
                     />
                     <View style={styles.rowMain}>
@@ -576,9 +731,29 @@ def:pub app -> JsxElement {
                         >
                             {t.title}
                         </Text>
-                        <Text style={styles.rowMeta}>
-                            {t.folder_name + "  ·  due " + t.due_date}
-                        </Text>
+                        <View style={styles.metaRow}>
+                            <View
+                                style={{
+                                    "backgroundColor": fcolor(t.folder_name),
+                                    "borderRadius": 999,
+                                    "paddingVertical": 2,
+                                    "paddingHorizontal": 8
+                                }}
+                            >
+                                <Text style={styles.badgeText}>
+                                    {t.folder_name}
+                                </Text>
+                            </View>
+                            <Text style={styles.rowMeta}>
+                                {"due " + t.due_date}
+                            </Text>
+                            {(<Text style={styles.recur}>
+                                {"↻ " + recur_text(t)}
+                            </Text>) if t.recurrence else <View/>}
+                        </View>
+                        {(<Text style={styles.loc}>
+                            {"📍 " + t.location}
+                        </Text>) if t.location else <View/>}
                     </View>
                 </View>
                 for t in today_tasks()
@@ -592,6 +767,7 @@ def:pub app -> JsxElement {
                 <View key={jid(t)} style={styles.row}>
                     <Switch
                         value={t.completed}
+                        trackColor={{"false": "#e7e9f2", "true": "#16a34a"}}
                         onValueChange={lambda (v: bool) { do_toggle(jid(t)); }}
                     />
                     <View style={styles.rowMain}>
@@ -605,9 +781,29 @@ def:pub app -> JsxElement {
                         >
                             {t.title}
                         </Text>
-                        <Text style={styles.rowMeta}>
-                            {t.folder_name + "  ·  due " + t.due_date}
-                        </Text>
+                        <View style={styles.metaRow}>
+                            <View
+                                style={{
+                                    "backgroundColor": fcolor(t.folder_name),
+                                    "borderRadius": 999,
+                                    "paddingVertical": 2,
+                                    "paddingHorizontal": 8
+                                }}
+                            >
+                                <Text style={styles.badgeText}>
+                                    {t.folder_name}
+                                </Text>
+                            </View>
+                            <Text style={styles.rowMeta}>
+                                {"due " + t.due_date}
+                            </Text>
+                            {(<Text style={styles.recur}>
+                                {"↻ " + recur_text(t)}
+                            </Text>) if t.recurrence else <View/>}
+                        </View>
+                        {(<Text style={styles.loc}>
+                            {"📍 " + t.location}
+                        </Text>) if t.location else <View/>}
                     </View>
                 </View>
                 for t in week_tasks()

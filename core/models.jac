@@ -28,7 +28,10 @@ node Task {
         task_type: str = "",
         created_at: str = "",
         ai_note: str = "",
-        deleted_at: str = "";
+        deleted_at: str = "",
+        recurrence: str = "",
+        start_time: str = "",
+        end_time: str = "";
 }
 
 node Subtask {

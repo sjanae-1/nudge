@@ -51,6 +51,12 @@ def fmt(t: Task, n: int) -> str {
     if t.location {
         line = line + ", @" + t.location;
     }
+    if t.recurrence {
+        line = line + ", ↻ weekly";
+        if t.start_time and t.end_time {
+            line = line + " " + t.start_time + "-" + t.end_time;
+        }
+    }
     return line + ")";
 }
 
@@ -103,6 +109,9 @@ async def cmd_add(
     folder: str,
     priority: str,
     place: str,
+    recur: str,
+    start: str,
+    end: str,
 ) -> int {
     d = due;
     if not d {
@@ -113,7 +122,10 @@ async def cmd_add(
         due_date=d,
         folder_name=folder,
         location=place,
-        priority=priority
+        priority=priority,
+        recurrence=recur,
+        start_time=start,
+        end_time=end
     );
     print("added: " + task.title + "  (due " + task.due_date + ", " + task.folder_name + ")");
     subs = await list_subtasks();
@@ -187,10 +199,19 @@ async def cmd_done(target: str) -> int {
         warn("nudge: task vanished before it could be toggled");
         return EXIT_FAILURE;
     }
-    if updated.completed {
-        print("done: " + updated.title);
+    if updated.recurrence {
+        print(
+            "done: "
+                + updated.title
+                + " -- repeats weekly, next on "
+                + updated.due_date
+        );
     } else {
-        print("reopened: " + updated.title);
+        if updated.completed {
+            print("done: " + updated.title);
+        } else {
+            print("reopened: " + updated.title);
+        }
     }
     return EXIT_OK;
 }
@@ -232,6 +253,14 @@ def build_parser -> argparse.ArgumentParser {
     addp.add_argument("--folder", `default="Miscellaneous", help="folder name (auto-created)");
     addp.add_argument("--priority", choices=["high", "medium", "low"], `default="medium");
     addp.add_argument("--location", `default="", help="place / room / address");
+    addp.add_argument(
+        "--recur",
+        choices=["weekly"],
+        `default="",
+        help="repeat every week (completing rolls to the next occurrence)"
+    );
+    addp.add_argument("--start", `default="", help="start time HH:MM (e.g. 13:00)");
+    addp.add_argument("--end", `default="", help="end time HH:MM (e.g. 15:00)");
 
     commands.add_parser("today", help="today's tasks after the auto-rollover nudge");
     commands.add_parser("all", help="every task with its selection number");
@@ -255,7 +284,10 @@ async def dispatch(ns: argparse.Namespace) -> int {
                 due=str(getattr(ns, "due", "") or ""),
                 folder=str(getattr(ns, "folder", "") or "Miscellaneous"),
                 priority=str(getattr(ns, "priority", "") or "medium"),
-                place=str(getattr(ns, "location", "") or "")
+                place=str(getattr(ns, "location", "") or ""),
+                recur=str(getattr(ns, "recur", "") or ""),
+                start=str(getattr(ns, "start", "") or ""),
+                end=str(getattr(ns, "end", "") or "")
             );
         }
         if cmd == "today" {

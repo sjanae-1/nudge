@@ -175,6 +175,67 @@ def maps_href(place: str) -> str {
     return "https://www.google.com/maps/dir/?api=1&destination=" + q;
 }
 
+def idiv(a: int, b: int) -> int {
+    return int(a / b);
+}
+
+"""Weekday name for a yyyy-mm-dd date (pure integer math, client-safe)."""
+def weekday_name(s: str) -> str {
+    p = s.split("-");
+    y = int(p[0]);
+    m = int(p[1]);
+    d = int(p[2]);
+    yy = y - (1 if m <= 2 else 0);
+    era = idiv(yy if yy >= 0 else yy - 399, 400);
+    yoe = yy - era * 400;
+    doy = idiv(153 * (m + (-3 if m > 2 else 9)) + 2, 5) + d - 1;
+    doe = yoe * 365 + idiv(yoe, 4) - idiv(yoe, 100) + doy;
+    days = era * 146097 + doe - 719468;
+    names = [
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday"
+    ];
+    return names[(days + 3) % 7];
+}
+
+"""12-hour label for an HH:MM string ("13:00" -> "1:00 PM")."""
+def hm(s: str) -> str {
+    p = s.split(":");
+    hh = int(p[0]);
+    mm = "00";
+    if len(p) > 1 and p[1] {
+        mm = p[1];
+    }
+    h12 = hh % 12;
+    if h12 == 0 {
+        h12 = 12;
+    }
+    return str(h12) + ":" + mm + (" AM" if hh < 12 else " PM");
+}
+
+"""Time range; single meridiem when both halves share it."""
+def hm_range(a: str, b: str) -> str {
+    ha = int(a.split(":")[0]);
+    hb = int(b.split(":")[0]);
+    if (ha < 12) == (hb < 12) {
+        return hm(a).replace(" PM", "").replace(" AM", "") + "-" + hm(b);
+    }
+    return hm(a) + " - " + hm(b);
+}
+
+"""Human recurrence label: 'every Sunday 1:00-3:00 PM'."""
+def recur_text(t: any) -> str {
+    s = "every " + weekday_name(t.due_date);
+    if t.start_time and t.end_time {
+        s = s + " " + hm_range(t.start_time, t.end_time);
+    } else {
+        if t.start_time {
+            s = s + " " + hm(t.start_time);
+        }
+    }
+    return s;
+}
+
 """True when a bridge failure means the session token is dead (stale
 account / reset store) -- the UI should sign out, not show raw JSON."""
 def is_auth_error(msg: str) -> bool {
@@ -198,6 +259,9 @@ def:pub Planner -> JsxPage {
         new_folder: str = "Miscellaneous",
         new_location: str = "",
         new_priority: str = "medium",
+        new_recur: str = "",
+        new_start: str = "13:00",
+        new_end: str = "15:00",
         show_meta: bool = False,
         new_folder_name: str = "",
         expanded: str = "",
@@ -291,11 +355,15 @@ def:pub Planner -> JsxPage {
                 due_date=new_due.strip(),
                 folder_name=new_folder,
                 location=new_location,
-                priority=new_priority
+                priority=new_priority,
+                recurrence=new_recur,
+                start_time=(new_start if new_recur else ""),
+                end_time=(new_end if new_recur else "")
             );
             new_title = "";
             new_location = "";
             new_priority = "medium";
+            new_recur = "";
             show_meta = False;
             # Surface any AI-created steps for the task we just added.
             await do_expand(jid(t));
@@ -1129,6 +1197,34 @@ def:pub Planner -> JsxPage {
                                         <option value="medium">MEDIUM PRIORITY</option>
                                         <option value="low">LOW PRIORITY</option>
                                     </select>
+                                    <select
+                                        value={new_recur}
+                                        title="Repeat"
+                                        onChange={lambda (e: ChangeEvent) {
+                                            new_recur = e.target.value;
+                                        }}
+                                    >
+                                        <option value="">NO REPEAT</option>
+                                        <option value="weekly">EVERY WEEK</option>
+                                    </select>
+                                    {(<div class="np-recur-times">
+                                        <input
+                                            value={new_start}
+                                            title="Start time (HH:MM)"
+                                            onChange={lambda (e: ChangeEvent) {
+                                                new_start = e.target.value;
+                                            }}
+                                            placeholder="starts 13:00"
+                                        />
+                                        <input
+                                            value={new_end}
+                                            title="End time (HH:MM)"
+                                            onChange={lambda (e: ChangeEvent) {
+                                                new_end = e.target.value;
+                                            }}
+                                            placeholder="ends 15:00"
+                                        />
+                                    </div>) if new_recur == "weekly" else None}
                                 </div>) if show_meta else None}
                                 {(<div class="np-newtype">
                                     <input
@@ -1214,15 +1310,19 @@ def:pub Planner -> JsxPage {
                                                 style={{"backgroundColor": folder_color(t.folder_name)}}
                                             >
                                                 {t.folder_name}
-                                            </span>
-                                            <span
-                                                class={
+                                            </span>                                            <span class={
                                                     "np-due "
                                                         + ("np-due-today" if today and t.due_date <= ymd_add(today, buf_days) else "")
                                                 }
                                             >
                                                 {t.due_date}
                                             </span>
+                                            {(<span
+                                                class="np-recur"
+                                                title="Repeating task -- completing it rolls to the next occurrence"
+                                            >
+                                                {"↻ " + recur_text(t)}
+                                            </span>) if t.recurrence else None}
                                             <button
                                                 class="np-caret"
                                                 title="Details"
@@ -1243,6 +1343,14 @@ def:pub Planner -> JsxPage {
                                                     📍 {t.location}
                                                 </a>
                                             </div>) if t.location else None}
+                                            {(<div class="np-meta">
+                                                <span
+                                                    class="np-recur"
+                                                    title="Repeating task -- completing it rolls to the next occurrence"
+                                                >
+                                                    {"↻ " + recur_text(t)}
+                                                </span>
+                                            </div>) if t.recurrence else None}
                                             <div class="np-actions">
                                                 <select
                                                     class="np-pri-sel"
