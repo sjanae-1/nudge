@@ -17,9 +17,10 @@ import asyncio;
 import sys;
 
 import from jaclang.server.bridge { BridgeError }
+import from jaclang.server { sv_client }
+import core.api as api_mod;
+import from core.models { Task, Subtask }
 import from core.api {
-    Task,
-    Subtask,
     current_date,
     list_tasks,
     add_task,
@@ -28,6 +29,9 @@ import from core.api {
     list_subtasks,
     breakdown
 }
+
+# task_type choices offered by `nudge add --type`.
+glob TYPE_CHOICES: list[str] = ["exam", "quiz", "assignment", "project"];
 
 glob PROG: str = "nudge",
      EXIT_OK: int = 0,
@@ -44,14 +48,14 @@ def warn(text: str) {
 def fmt(t: Task, n: int) -> str {
     state = "[x]" if t.completed else "[ ]";
     line = "  " + str(n) + " " + state + " " + t.title + "  (" + t.folder_name + ", due " + t.due_date;
+    if t.task_type {
+        line = line + ", " + t.task_type;
+    }
     if t.priority == "high" {
         line = line + ", P:high";
     }
-    if t.energy_level and t.energy_level != "medium" {
-        line = line + ", energy:" + t.energy_level;
-    }
-    if t.room_location {
-        line = line + ", @" + t.room_location;
+    if t.location {
+        line = line + ", @" + t.location;
     }
     if t.people {
         line = line + ", with " + t.people;
@@ -107,25 +111,25 @@ async def cmd_add(
     due: str,
     folder: str,
     priority: str,
-    energy: str,
+    kind: str,
     people: str,
-    room: str,
+    place: str,
 ) -> int {
     d = due;
     if not d {
-        d = current_date();
+        d = await current_date();
     }
-    task = add_task(
+    task = await add_task(
         title=title,
         due_date=d,
         folder_name=folder,
         people=people,
-        room_location=room,
+        location=place,
         priority=priority,
-        energy_level=energy
+        task_type=kind
     );
     print("added: " + task.title + "  (due " + task.due_date + ", " + task.folder_name + ")");
-    subs = list_subtasks();
+    subs = await list_subtasks();
     mine: list[Subtask] = [];
     for s in subs {
         if s.task_id == jid(task) {
@@ -143,7 +147,7 @@ async def cmd_add(
 }
 
 async def cmd_today -> int {
-    shifted = rollover_status();
+    shifted = await rollover_status();
     if shifted > 0 {
         print(
             str(shifted)
@@ -152,8 +156,8 @@ async def cmd_today -> int {
                 + " rolled over to today"
         );
     }
-    today = current_date();
-    tasks = list_tasks();
+    today = await current_date();
+    tasks = await list_tasks();
     print("today (" + today + "):");
     n = 0;
     shown = 0;
@@ -171,7 +175,7 @@ async def cmd_today -> int {
 }
 
 async def cmd_all -> int {
-    tasks = list_tasks();
+    tasks = await list_tasks();
     if len(tasks) == 0 {
         print("no tasks yet -- add one with: nudge add <title>");
         return EXIT_OK;
@@ -186,12 +190,12 @@ async def cmd_all -> int {
 }
 
 async def cmd_done(target: str) -> int {
-    tasks = list_tasks();
+    tasks = await list_tasks();
     i = resolve(tasks, target);
     if i < 0 {
         return EXIT_FAILURE;
     }
-    updated = complete_task(jid(tasks[i]));
+    updated = await complete_task(jid(tasks[i]));
     if updated is None {
         warn("nudge: task vanished before it could be toggled");
         return EXIT_FAILURE;
@@ -205,14 +209,14 @@ async def cmd_done(target: str) -> int {
 }
 
 async def cmd_breakdown(target: str) -> int {
-    tasks = list_tasks();
+    tasks = await list_tasks();
     i = resolve(tasks, target);
     if i < 0 {
         return EXIT_FAILURE;
     }
     task = tasks[i];
     print("breaking down: " + task.title);
-    subs = breakdown(jid(task));
+    subs = await breakdown(jid(task));
     if len(subs) == 0 {
         print("no steps came back -- is the local byllm model installed?");
         return EXIT_OK;
@@ -238,11 +242,11 @@ def build_parser -> argparse.ArgumentParser {
     addp = commands.add_parser("add", help="add a task (due date defaults to today)");
     addp.add_argument("title", help="what needs doing");
     addp.add_argument("--due", `default="", help="due date yyyy-mm-dd (default: today)");
-    addp.add_argument("--folder", `default="Inbox", help="folder name (auto-created)");
+    addp.add_argument("--folder", `default="Miscellaneous", help="folder name (auto-created)");
     addp.add_argument("--priority", choices=["high", "medium", "low"], `default="medium");
-    addp.add_argument("--energy", choices=["high", "medium", "low"], `default="medium");
+    addp.add_argument("--type", choices=TYPE_CHOICES, `default="", help="exam | quiz | assignment | project");
     addp.add_argument("--people", `default="", help="collaborators, comma separated");
-    addp.add_argument("--room", `default="", help="room or location");
+    addp.add_argument("--location", `default="", help="place / room / address");
 
     commands.add_parser("today", help="today's tasks after the auto-rollover nudge");
     commands.add_parser("all", help="every task with its selection number");
@@ -264,11 +268,11 @@ async def dispatch(ns: argparse.Namespace) -> int {
             return await cmd_add(
                 title=str(getattr(ns, "title", "") or ""),
                 due=str(getattr(ns, "due", "") or ""),
-                folder=str(getattr(ns, "folder", "") or "Inbox"),
+                folder=str(getattr(ns, "folder", "") or "Miscellaneous"),
                 priority=str(getattr(ns, "priority", "") or "medium"),
-                energy=str(getattr(ns, "energy", "") or "medium"),
+                kind=str(getattr(ns, "type", "") or ""),
                 people=str(getattr(ns, "people", "") or ""),
-                room=str(getattr(ns, "room", "") or "")
+                place=str(getattr(ns, "location", "") or "")
             );
         }
         if cmd == "today" {
@@ -296,6 +300,13 @@ async def dispatch(ns: argparse.Namespace) -> int {
 }
 
 async def main(argv: list[str]) -> int {
+    # Run the shared planner service in this process (colocated), so the
+    # terminal uses the exact same core.api code + database as web/mobile.
+    try {
+        sv_client.register_local("api", api_mod);
+    } except Exception as e {
+        warn("nudge: could not colocate core.api: " + str(e));
+    }
     parser = build_parser();
     return await dispatch(parser.parse_args(argv));
 }

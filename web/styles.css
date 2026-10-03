@@ -170,6 +170,10 @@ body {
   color: var(--np-mute);
   font-weight: 600;
   margin-top: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .np-side-title:first-child {
@@ -618,6 +622,614 @@ body {
   cursor: pointer;
 }
 
+.np-busy {
+  animation: npPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes npPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ---------- task detail dropdown ---------- */
+
+.np-detail {
+  border-top: 1px dashed var(--np-line);
+  background: linear-gradient(180deg, #fafbff, #f6f7ff);
+  padding: 0.6rem 1rem 0.7rem 2.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: npIn 0.25s ease both;
+}
+
+.np-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.np-type {
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+}
+
+.np-caret {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--np-mute);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+}
+
+.np-caret:hover {
+  background: #eef1fb;
+  color: var(--np-accent);
+}
+
+.np-gcal {
+  font-size: 0.78rem;
+  color: var(--np-accent);
+  text-decoration: none;
+  border: 1px solid var(--np-line);
+  border-radius: 999px;
+  padding: 0.18rem 0.7rem;
+  background: white;
+}
+
+.np-gcal:hover {
+  border-color: var(--np-accent);
+}
+
+/* ---------- view head extras ---------- */
+
+.np-buf {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--np-mute);
+}
+
+.np-buf select {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--np-line);
+  border-radius: 8px;
+  background: white;
+  color: inherit;
+}
+
+.np-calbtn {
+  margin-left: auto;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--np-line);
+  background: white;
+  color: var(--np-accent);
+  cursor: pointer;
+}
+
+.np-calbtn:hover {
+  border-color: var(--np-accent);
+}
+
+/* ---------- calendar view ---------- */
+
+.np-cal {
+  background: white;
+  border: 1px solid var(--np-line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem 1rem;
+  box-shadow: 0 4px 16px rgba(30, 40, 90, 0.05);
+}
+
+.np-calhead {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.np-calmonth {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.np-calnav {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--np-line);
+  background: white;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.np-calnav:hover {
+  border-color: var(--np-accent);
+  color: var(--np-accent);
+}
+
+.np-ics {
+  margin-left: auto;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: var(--np-accent, #3b82f6);
+  color: #fff;
+  text-decoration: none;
+}
+
+.np-calgrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.np-calwd {
+  margin-bottom: 4px;
+}
+
+.np-calwd span {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--np-mute);
+  text-transform: uppercase;
+  padding: 0.2rem 0;
+}
+
+.np-calcell {
+  min-height: 74px;
+  border: 1px solid var(--np-line);
+  border-radius: 8px;
+  padding: 4px 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.np-calblank {
+  background: #f7f8fc;
+  border-color: transparent;
+}
+
+.np-caltoday {
+  border-color: var(--np-accent, #3b82f6);
+  box-shadow: inset 0 0 0 1px var(--np-accent, #3b82f6);
+  background: #f5f9ff;
+}
+
+.np-cald {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--np-mute);
+}
+
+.np-caltoday .np-cald {
+  color: var(--np-accent, #3b82f6);
+}
+
+.np-caltask {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 0.66rem;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.np-caltask:hover {
+  filter: brightness(1.12);
+}
+
+.np-callegend {
+  display: flex;
+  gap: 0.9rem;
+  margin-top: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.np-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--np-mute);
+}
+
+/* ---------- login page ---------- */
+
+.np-auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(1200px 500px at 20% -10%, #e8eeff 0%, transparent 60%),
+    radial-gradient(900px 400px at 110% 10%, #ffe9ef 0%, transparent 55%),
+    #f7f8fc;
+  padding: 1rem;
+}
+
+.np-auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: white;
+  border: 1px solid var(--np-line);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(30, 40, 90, 0.1);
+  padding: 2rem 1.8rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  text-align: center;
+}
+
+.np-auth-card h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  background: linear-gradient(90deg, #4f7df9, #9333ea);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.np-auth-tabs {
+  display: flex;
+  gap: 0.4rem;
+  background: #f1f3fa;
+  border-radius: 999px;
+  padding: 0.25rem;
+  margin-top: 0.6rem;
+}
+
+.np-auth-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.45rem 0;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--np-mute);
+}
+
+.np-auth-tab-on {
+  background: white;
+  color: var(--np-ink, #1f2430);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(30, 40, 90, 0.08);
+}
+
+.np-auth-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--np-line);
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.np-auth-input:focus {
+  outline: none;
+  border-color: var(--np-accent);
+  box-shadow: 0 0 0 3px rgba(79, 125, 249, 0.15);
+}
+
+.np-auth-btn {
+  padding: 0.65rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #4f7df9, #7c4df9);
+  color: white;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.np-auth-btn:hover {
+  filter: brightness(1.06);
+}
+
+.np-auth-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.76rem;
+  color: var(--np-mute);
+}
+
+.np-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+/* subtle pill in the header: visible, not shouty */
+.np-signout {
+  margin-left: auto;
+  background: white;
+  border: 1px solid var(--np-line);
+  border-radius: 999px;
+  padding: 0.42rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--np-accent);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.np-signout:hover {
+  background: var(--np-accent-soft);
+  border-color: var(--np-accent);
+}
+
+/* ---------- folder manage / types / task picks ---------- */
+
+.np-gear {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--np-line);
+  background: white;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #7a7f99;
+  padding: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.np-gear:hover,
+.np-gear-on,
+.np-gear-on:hover {
+  background: var(--np-accent-soft);
+  border-color: var(--np-accent);
+  color: var(--np-accent);
+}
+
+.np-mrow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f3f4fa;
+  border: 1px solid var(--np-line);
+  border-radius: 10px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.82rem;
+  color: var(--np-ink);
+}
+
+.np-mrow-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.np-marrow,
+.np-mrow-x {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--np-line);
+  background: white;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.np-marrow:hover {
+  background: var(--np-accent-soft);
+  border-color: var(--np-accent);
+}
+
+.np-mrow-x {
+  color: var(--np-red);
+  border-color: #f5c2c0;
+}
+
+.np-mrow-x:hover {
+  background: #fdecea;
+}
+
+.np-addtype {
+  flex: 0 0 auto;
+  border: 1px dashed #b9bdd3;
+  background: white;
+  color: var(--np-mute);
+  border-radius: 9px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.np-addtype:hover {
+  color: var(--np-accent);
+  border-color: var(--np-accent);
+}
+
+.np-newtype {
+  flex-basis: 100%;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.np-newtype input {
+  flex: 1;
+  min-width: 0;
+}
+
+.np-newtype button {
+  border: none;
+  background: var(--np-accent);
+  color: white;
+  border-radius: 9px;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.np-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.np-pick select {
+  border: 1px solid var(--np-line);
+  background: white;
+  border-radius: 8px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: #4a4f68;
+  max-width: 150px;
+}
+
+.np-pick select:focus {
+  outline: none;
+  border-color: var(--np-accent);
+}
+
+a.np-room {
+  display: inline-block;
+  text-decoration: none;
+  max-width: 240px;
+}
+
+a.np-room:hover {
+  border-color: var(--np-accent);
+  color: var(--np-accent);
+}
+
+/* red X delete (task + steps) */
+.np-del {
+  color: var(--np-red) !important;
+  border-color: #f5c2c0 !important;
+  font-weight: 700;
+}
+
+.np-sub-pen,
+.np-sub-x {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--np-line);
+  background: white;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+
+.np-sub:hover .np-sub-pen,
+.np-sub:hover .np-sub-x {
+  opacity: 1;
+}
+
+.np-sub-pen:hover {
+  background: var(--np-accent-soft);
+  border-color: var(--np-accent);
+}
+
+.np-sub-x {
+  color: var(--np-red);
+  border-color: #f5c2c0;
+  opacity: 0.7;
+}
+
+.np-sub-x:hover {
+  background: #fdecea;
+  opacity: 1;
+}
+
+.np-sub-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.np-ed-title {
+  flex: 1 1 200px;
+  min-width: 0;
+  border: 1px solid var(--np-line);
+  border-radius: 8px;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.np-ed-due {
+  border: 1px solid var(--np-line);
+  border-radius: 8px;
+  padding: 0.24rem 0.35rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+
+.np-ed-title:focus,
+.np-ed-due:focus {
+  outline: none;
+  border-color: var(--np-accent);
+}
+
+.np-ed-save {
+  border: none;
+  background: var(--np-accent);
+  color: white;
+  border-radius: 8px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.np-ed-cancel {
+  border: 1px solid var(--np-line);
+  background: white;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 /* ---------- footer ---------- */
 
 .np-footer {
@@ -665,4 +1277,256 @@ body {
   .np-actions {
     margin-left: 0;
   }
+}
+
+/* ---------- unified dropdowns / done+deleted / invites ---------- */
+
+/* success notification (e.g. invite sent) -- click to dismiss */
+.np-note {
+  background: #e9f7ef;
+  border: 1px solid #bfe6cf;
+  color: #14532d;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  margin-bottom: 0.9rem;
+  font-size: 0.86rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* fill-in-the-blank "due within N days/weeks" */
+.np-buf input {
+  width: 58px;
+  border: 1px solid var(--np-line);
+  border-radius: 8px;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+  background: white;
+  color: var(--np-ink);
+  text-align: center;
+}
+
+.np-buf input:focus {
+  outline: none;
+  border-color: var(--np-accent);
+}
+
+/* type control: the badge and the editor are now the same line */
+.np-type-sel {
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-family: inherit;
+  cursor: pointer;
+  max-width: 170px;
+}
+
+.np-type-sel option {
+  background: white;
+  color: #171a2b;
+}
+
+.np-type-sel:focus {
+  outline: 2px solid var(--np-accent);
+  outline-offset: 1px;
+}
+
+/* inline "+ add new ..." row opened from a dropdown */
+.np-newtype .np-newtype-x {
+  background: white;
+  color: var(--np-mute);
+  border: 1px solid var(--np-line);
+  font-weight: 500;
+}
+
+.np-newtype .np-newtype-x:hover {
+  border-color: var(--np-accent);
+  color: var(--np-accent);
+}
+
+/* one Calendar button that drops down to gcal / .ics */
+.np-caldrop {
+  position: relative;
+  display: inline-block;
+}
+
+button.np-gcal {
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.np-calmenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 195px;
+  background: white;
+  border: 1px solid var(--np-line);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px -8px rgba(23, 26, 43, 0.35);
+  overflow: hidden;
+}
+
+.np-calmenu a {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--np-ink);
+  text-decoration: none;
+}
+
+.np-calmenu a:hover {
+  background: var(--np-accent-soft);
+  color: var(--np-accent);
+}
+
+/* collaborator invite */
+.np-invite {
+  border-color: #ffd9c2 !important;
+  color: #c2410c !important;
+  background: #fff4ec !important;
+}
+
+.np-invite:hover {
+  background: #ffe9db !important;
+}
+
+.np-invite-panel {
+  border: 1px solid #f2d9b7;
+  background: #fffaf3;
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  animation: npIn 0.2s ease both;
+}
+
+.np-invite-head {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.np-invite-to {
+  font-size: 0.82rem;
+  color: var(--np-ink);
+  word-break: break-all;
+}
+
+.np-invite-sub {
+  font-size: 0.76rem;
+  color: var(--np-mute);
+}
+
+.np-invite-btns {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+
+.np-invite-send {
+  border: none;
+  background: var(--np-green);
+  color: white;
+  border-radius: 8px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.np-invite-send:hover {
+  background: var(--np-green-dark);
+}
+
+.np-invite-cancel {
+  border: 1px solid var(--np-line);
+  background: white;
+  border-radius: 8px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.np-invite-cancel:hover {
+  background: #f3f4fa;
+}
+
+/* Done / Deleted chips get a colored dot */
+.np-chip-done::before,
+.np-chip-del::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.np-chip-done::before {
+  background: var(--np-green);
+}
+
+.np-chip-del::before {
+  background: var(--np-red);
+}
+
+/* deleted-task rows */
+.np-trash-row {
+  opacity: 0.92;
+}
+
+.np-trash-note {
+  font-size: 0.72rem;
+  color: var(--np-mute);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.np-restore {
+  border: 1px solid #bfe6cf;
+  background: #e9f7ef;
+  color: #14532d;
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.np-restore:hover {
+  background: #d6f0e1;
+  border-color: var(--np-green);
+}
+
+/* estimated-minutes field in the step editor */
+.np-ed-est {
+  width: 66px;
+  border: 1px solid var(--np-line);
+  border-radius: 8px;
+  padding: 0.24rem 0.35rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+
+.np-ed-est:focus {
+  outline: none;
+  border-color: var(--np-accent);
+}
+
+.np-ed-unit {
+  font-size: 0.72rem;
+  color: var(--np-mute);
 }

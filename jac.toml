@@ -14,6 +14,10 @@ entry-point = "web.main"
 kind = "cli"
 entry-point = "cli.main"
 
+[apps.api]
+kind = "service"
+entry-point = "core.api"
+
 [apps.cli.check]
 [apps.cli.check.lint]
 ignore = ["no-print"]
@@ -26,6 +30,7 @@ entry-point = "mobile.main"
 [dependencies.npm]
 react = "^19.2.0"
 react-dom = "^19.2.0"
+react-native-web = "^0.19.13"
 zod = "^4.3.6"
 
 [dependencies.npm.dev]
@@ -53,8 +58,6 @@ auto_download = true
 port = 8000
 
 [placement.pins]
-# Clock/graph code: today_str uses Python's date, run_rollover mutates the
-# graph -- dual-emitting them client-side would reference unbound names
-# (E5101) and fork the clock. Endpoints are :pub, so client calls still
-# bridge over RPC with the module pinned server.
-"core.api" = "server"
+# core.api is the `api` service app's entry (see [apps.api]), so its
+# server placement and the client/CLI bridge come from the service
+# boundary itself; no codespace pin is needed anymore.

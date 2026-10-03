@@ -7,6 +7,13 @@ comparison is chronological -- that is what powers auto-rollover.
 
 node Folder {
     has name: str,
+        color: str = "#6c8ebf",
+        pos: int = 0;
+}
+
+"""User-defined task type (built-in types live client-side)."""
+node TypeTag {
+    has name: str,
         color: str = "#6c8ebf";
 }
 
@@ -14,13 +21,14 @@ node Task {
     has title: str,
         due_date: str,
         completed: bool = False,
-        folder_name: str = "Inbox",
+        folder_name: str = "Miscellaneous",
         people: str = "",
-        room_location: str = "",
+        location: str = "",
         priority: str = "medium",
-        energy_level: str = "medium",
+        task_type: str = "",
         created_at: str = "",
-        ai_note: str = "";
+        ai_note: str = "",
+        deleted_at: str = "";
 }
 
 node Subtask {
