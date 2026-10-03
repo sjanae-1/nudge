@@ -12,23 +12,8 @@ are shifted to today before anyone sees them (the spec's
 
 import from datetime { date, timedelta }
 import from urllib.parse { quote }
-import from urllib.request { Request, urlopen }
-import from os { environ }
-import from json { dumps }
-import from core.models { Folder, Task, Subtask, TypeTag }
+import from core.models { Folder, Task, Subtask }
 import from core.ai_engine { PlanStep, SizeReview }
-
-"""Color palette handed out to user-created task types, in order."""
-glob TYPE_PALETTE: list[str] = [
-    "#e5484d",
-    "#f5a623",
-    "#3b82f6",
-    "#9333ea",
-    "#2f9e44",
-    "#0097a7",
-    "#d81b60",
-    "#6d4c41"
-];
 
 """Break a high-level goal into 3-6 micro-tasks of 15-45 minutes each, each paced with its own due date."""
 def breakdown_task(goal: str, due_date: str) -> list[PlanStep] by llm();
@@ -160,7 +145,6 @@ def:priv seed_workspace {
         title="Make cheatsheet for Math 528 Exam",
         due_date=str(date.fromisoformat(today) + timedelta(days=5)),
         folder_name="MATH 528",
-        task_type="exam",
         priority="high",
         created_at=today
     );
@@ -168,14 +152,12 @@ def:priv seed_workspace {
         title="Finish ACC 302 Practice Exam 1",
         due_date=str(date.fromisoformat(today) + timedelta(days=3)),
         folder_name="ACC 302",
-        task_type="exam",
         created_at=today
     );
     f_eecs ++> Task(
         title="Design mobile interface for EECS 449 Extra Credit Assignment",
         due_date=str(date.fromisoformat(today) + timedelta(days=4)),
         folder_name="EECS 449",
-        task_type="assignment",
         priority="high",
         created_at=today
     );
@@ -279,33 +261,6 @@ def:protect move_folder(name: str, dirn: int) -> list[Folder] {
     return sorted_folders();
 }
 
-# --- Custom task types ---
-
-"""User-created task types (the built-ins live client-side)."""
-def:protect list_types -> list[TypeTag] {
-    return [root-->][?:TypeTag];
-}
-
-"""Register a custom type (idempotent by name); auto-assigns a color."""
-def:protect create_type(name: str, color: str = "") -> TypeTag {
-    clean = name.strip();
-    if not clean {
-        raise ValueError("type name required");
-    }
-    existing = [root-->][?:TypeTag];
-    for t in existing {
-        if t.name.lower() == clean.lower() {
-            return t;
-        }
-    }
-    c = color.strip();
-    if not c {
-        # cycle only over the 4 colors not used by the built-in types
-        c = TYPE_PALETTE[4 + len(existing) % 4];
-    }
-    return root ++> TypeTag(name=clean, color=c);
-}
-
 # --- Task endpoints ---
 
 """All tasks, after running the auto-rollover pass."""
@@ -352,7 +307,6 @@ def:priv auto_split(task: Task) {
 
 """Add a task. due_date (yyyy-mm-dd) is mandatory by design.
 
-task_type is one of "", exam, quiz, assignment, project.
 
 After the task is saved, an AI size review runs: if the title looks too
 large to finish in one day or a few hours, the task comes back already
@@ -363,10 +317,8 @@ def:protect add_task(
     title: str,
     due_date: str,
     folder_name: str = "Miscellaneous",
-    people: str = "",
     location: str = "",
     priority: str = "medium",
-    task_type: str = "",
 ) -> Task {
     if not title.strip() {
         raise ValueError("title is required");
@@ -379,10 +331,8 @@ def:protect add_task(
         title=title.strip(),
         due_date=due_date.strip(),
         folder_name=folder.name,
-        people=people,
         location=location,
         priority=priority,
-        task_type=task_type.strip().lower(),
         created_at=today_str(),
     );
     auto_split(task);
@@ -400,14 +350,20 @@ def:protect complete_task(id: str) -> Task | None {
     return None;
 }
 
-"""Change a task's folder and/or type after creation ("" clears the type)."""
-def:protect update_task(id: str, folder_name: str = "", task_type: str = "") -> Task | None {
+"""Change a task's folder and/or priority after creation."""
+def:protect update_task(id: str, folder_name: str = "", priority: str = "") -> Task | None {
     for t in all_tasks() {
         if jid(t) == id {
             if folder_name.strip() {
                 t.folder_name = folder_named(folder_name.strip()).name;
             }
-            t.task_type = task_type.strip().lower();
+            if priority.strip() {
+                p = priority.strip().lower();
+                if p != "high" and p != "medium" and p != "low" {
+                    raise ValueError("priority must be high, medium, or low");
+                }
+                t.priority = p;
+            }
             return t;
         }
     }
@@ -578,11 +534,15 @@ def:priv ics_escape(raw: str) -> str {
 
 Importable directly into Google Calendar (Settings > Import) and macOS
 Calendar (File > Import), or any other ICS-consuming calendar app.
+Pass a folder name to export only that folder's tasks.
 """
-def:protect ics_feed -> str {
+def:protect ics_feed(folder: str = "") -> str {
     out = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Nudge//Personal Planner//EN\r\nCALSCALE:GREGORIAN\r\n";
     for t in all_tasks() {
         if t.completed {
+            continue;
+        }
+        if folder and t.folder_name != folder {
             continue;
         }
         try {
@@ -597,9 +557,7 @@ def:protect ics_feed -> str {
         out = out + "DTSTART;VALUE=DATE:" + str(start).replace("-", "") + "\r\n";
         out = out + "DTEND;VALUE=DATE:" + str(end).replace("-", "") + "\r\n";
         out = out + "SUMMARY:" + ics_escape(t.title) + "\r\n";
-        out = out + "DESCRIPTION:" + ics_escape(
-            t.folder_name + (" -- " + t.task_type if t.task_type else "")
-        ) + "\r\n";
+        out = out + "DESCRIPTION:" + ics_escape(t.folder_name) + "\r\n";
         out = out + "END:VEVENT\r\n";
     }
     out = out + "END:VCALENDAR\r\n";
@@ -607,8 +565,8 @@ def:protect ics_feed -> str {
 }
 
 """The ICS feed as a ready-to-use data: URI (client uses it as an <a href>)."""
-def:protect ics_download_url -> str {
-    return "data:text/calendar;charset=utf-8," + quote(ics_feed());
+def:protect ics_download_url(folder: str = "") -> str {
+    return "data:text/calendar;charset=utf-8," + quote(ics_feed(folder));
 }
 
 """A one-event .ics data: URI for a single task.
@@ -657,112 +615,3 @@ def:protect google_cal_link(id: str) -> str {
     );
 }
 
-# --- Collaborator email invites ---
-
-"""Split a collaborators string into validated email addresses."""
-def:priv parse_emails(raw: str) -> list[str] {
-    out: list[str] = [];
-    for piece in raw.split(",") {
-        e = piece.strip();
-        if e {
-            if not ("@" in e) or not ("." in e.split("@")[-1]) {
-                raise ValueError("'" + e + "' does not look like an email address");
-            }
-            out.append(e);
-        }
-    }
-    if len(out) == 0 {
-        raise ValueError("no email addresses found in the collaborators list");
-    }
-    return out;
-}
-
-"""Minimal HTML escaping for invite email bodies."""
-def:priv html_esc(raw: str) -> str {
-    return raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-}
-
-"""Send (or preview) the event-invite email for a task's collaborators.
-
-First call with confirmed=False sends nothing -- it returns the
-recipients and subject so the UI can show a confirmation notification.
-Only a confirmed=True call actually delivers the email through Resend
-(RESEND_API_KEY must be set in the server environment).
-"""
-def:protect invite_collaborators(
-    id: str,
-    emails: str = "",
-    confirmed: bool = False,
-) -> dict[str, any] {
-    task = find_task(id);
-    if task is None {
-        raise ValueError("no task with id " + id);
-    }
-    to = parse_emails(emails or task.people);
-    subject = "Invitation: " + task.title;
-    if not confirmed {
-        return {
-            "ok": False,
-            "needs_confirm": True,
-            "to": to,
-            "subject": subject,
-        };
-    }
-    key = environ.get("RESEND_API_KEY", "").strip();
-    if not key {
-        raise ValueError(
-            "email sending is not configured -- set RESEND_API_KEY and restart the server"
-        );
-    }
-    where = "";
-    if task.location {
-        where = "<p><b>Where:</b> " + html_esc(task.location) + "</p>";
-    }
-    kind = "";
-    if task.task_type {
-        kind = " -- " + html_esc(task.task_type);
-    }
-    body = (
-        "<p>You have been invited to:</p>"
-        + "<h3>"
-        + html_esc(task.title)
-        + "</h3>"
-        + "<p><b>When:</b> "
-        + task.due_date
-        + "</p>"
-        + where
-        + "<p><b>Folder:</b> "
-        + html_esc(task.folder_name)
-        + kind
-        + "</p>"
-        + "<p><a href=\""
-        + google_cal_link(id)
-        + "\">Add it to your Google Calendar</a></p>"
-        + "<p>Sent from Nudge -- Personal Planning App.</p>"
-    );
-    payload = dumps({
-        "from": environ.get("RESEND_FROM", "onboarding@resend.dev"),
-        "to": to,
-        "subject": subject,
-        "html": body,
-    });
-    req = Request(
-        "https://api.resend.com/emails",
-        data=payload.encode("utf-8"),
-        headers={
-            "Authorization": "Bearer " + key,
-            "Content-Type": "application/json",
-        },
-    );
-    try {
-        resp = urlopen(req, timeout=15);
-        code = resp.status;
-        resp.close();
-    } except Exception as e {
-        raise ValueError("email send failed: " + str(e));
-    }
-    if code < 200 or code >= 300 {
-        raise ValueError("email API returned status " + str(code));
-    }
-    return {"ok": True, "to": to};
-}

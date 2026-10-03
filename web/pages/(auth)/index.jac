@@ -16,8 +16,6 @@ import from core.api {
     create_folder,
     delete_folder,
     move_folder,
-    list_types,
-    create_type,
     list_tasks,
     add_task,
     complete_task,
@@ -32,8 +30,7 @@ import from core.api {
     ics_download_url,
     task_ics_download_url,
     list_deleted,
-    restore_task,
-    invite_collaborators
+    restore_task
 }
 
 glob MONTHS: list[str] = [
@@ -182,10 +179,8 @@ def:pub Planner -> JsxPage {
         new_title: str = "",
         new_due: str = "",
         new_folder: str = "Miscellaneous",
-        new_people: str = "",
         new_location: str = "",
         new_priority: str = "medium",
-        new_type: str = "",
         show_meta: bool = False,
         new_folder_name: str = "",
         expanded: str = "",
@@ -199,11 +194,8 @@ def:pub Planner -> JsxPage {
         ics_url: str = "",
         ics_one: str = "",
         leave: bool = False,
-        types: list[any] = [],
         manage_f: bool = False,
-        type_target: str = "",
         folder_target: str = "",
-        new_type_name: str = "",
         editing_sub: str = "",
         ed_sub_title: str = "",
         ed_sub_due: str = "",
@@ -211,11 +203,7 @@ def:pub Planner -> JsxPage {
         buf_unit: str = "days",
         special: str = "",
         trash: list[any] = [],
-        cal_menu: str = "",
-        invite_for: str = "",
-        invite_to: str = "",
-        invite_stage: str = "",
-        note: str = "";
+        cal_menu: str = "";
 
     # Load everything once, then reuse refresh() after every mutation.
     async can with entry {
@@ -237,7 +225,6 @@ def:pub Planner -> JsxPage {
                 );
             }
             folders = await list_folders();
-            types = await list_types();
             tasks = await list_tasks();
             subs = await list_subtasks();
             trash = await list_deleted();
@@ -257,7 +244,6 @@ def:pub Planner -> JsxPage {
 
     async def refresh {
         folders = await list_folders();
-        types = await list_types();
         tasks = await list_tasks();
         subs = await list_subtasks();
         trash = await list_deleted();
@@ -286,16 +272,12 @@ def:pub Planner -> JsxPage {
                 title=new_title.strip(),
                 due_date=new_due.strip(),
                 folder_name=new_folder,
-                people=new_people,
                 location=new_location,
-                priority=new_priority,
-                task_type=new_type
+                priority=new_priority
             );
             new_title = "";
-            new_people = "";
             new_location = "";
             new_priority = "medium";
-            new_type = "";
             show_meta = False;
             # Surface any AI-created steps for the task we just added.
             await do_expand(jid(t));
@@ -323,11 +305,6 @@ def:pub Planner -> JsxPage {
                 expanded = "";
             }
             cal_menu = "";
-            if invite_for == id {
-                invite_stage = "";
-                invite_for = "";
-                invite_to = "";
-            }
             await refresh();
         } except Exception as e {
             error = str(e);
@@ -361,28 +338,10 @@ def:pub Planner -> JsxPage {
         error = "";
         try {
             f = await create_folder(name=new_folder_name);
-            target = folder_target;
             new_folder_name = "";
             folder_target = "";
+            new_folder = f.name;
             folders = await list_folders();
-            if target == "new" {
-                new_folder = f.name;
-            } elif target {
-                kind = "";
-                for w in tasks {
-                    if jid(w) == target {
-                        kind = w.task_type;
-                    }
-                }
-                await update_task(
-                    id=target,
-                    folder_name=f.name,
-                    task_type=kind
-                );
-                await refresh();
-            } else {
-                new_folder = f.name;
-            }
         } except Exception as e {
             error = str(e);
         }
@@ -394,10 +353,8 @@ def:pub Planner -> JsxPage {
         if cal {
             special = "";
             cal_menu = "";
-        }
-        if cal and not ics_url {
             try {
-                ics_url = await ics_download_url();
+                ics_url = await ics_download_url(folder=folder_filter);
             } except Exception as e {
                 error = str(e);
             }
@@ -466,39 +423,23 @@ def:pub Planner -> JsxPage {
         }
     }
 
-    async def do_create_type {
-        error = "";
-        try {
-            t = await create_type(name=new_type_name);
-            target = type_target;
-            new_type_name = "";
-            type_target = "";
-            types = await list_types();
-            if target == "new" {
-                new_type = t.name.lower();
-            } elif target {
-                fname = "";
-                for w in tasks {
-                    if jid(w) == target {
-                        fname = w.folder_name;
-                    }
-                }
-                await update_task(
-                    id=target,
-                    folder_name=fname,
-                    task_type=t.name.lower()
-                );
-                await refresh();
+    """Folder filter -- also refreshes the calendar's folder-scoped .ics."""
+    async def set_folder(name: str) {
+        folder_filter = name;
+        special = "";
+        if cal {
+            try {
+                ics_url = await ics_download_url(folder=name);
+            } except Exception as e {
+                error = str(e);
             }
-        } except Exception as e {
-            error = str(e);
         }
     }
 
-    async def do_update_task(id: str, folder: str, kind: str) {
+    async def do_set_priority(id: str, pri: str) {
         error = "";
         try {
-            await update_task(id=id, folder_name=folder, task_type=kind);
+            await update_task(id=id, priority=pri);
             await refresh();
         } except Exception as e {
             error = str(e);
@@ -565,16 +506,7 @@ def:pub Planner -> JsxPage {
         }
     }
 
-    """One dropdown per setting: '+ add new ...' opens the inline input."""
-    def pick_new_type(v: str) {
-        if v == "__add__" {
-            type_target = "new";
-        } else {
-            type_target = "";
-            new_type = v;
-        }
-    }
-
+    """Folder picker in quick-add: '+ add new ...' opens the inline input."""
     def pick_new_folder(v: str) {
         if v == "__add__" {
             folder_target = "new";
@@ -582,29 +514,6 @@ def:pub Planner -> JsxPage {
             folder_target = "";
             new_folder = v;
         }
-    }
-
-    def pick_task_type(id: str, folder: str, v: str) {
-        if v == "__add__" {
-            type_target = id;
-        } else {
-            type_target = "";
-            do_update_task(id, folder, v);
-        }
-    }
-
-    def pick_task_folder(id: str, kind: str, v: str) {
-        if v == "__add__" {
-            folder_target = id;
-        } else {
-            folder_target = "";
-            do_update_task(id, v, kind);
-        }
-    }
-
-    def cancel_new_type {
-        type_target = "";
-        new_type_name = "";
     }
 
     def cancel_new_folder {
@@ -642,115 +551,6 @@ def:pub Planner -> JsxPage {
         }
         return "due in " + str(buf_days)
             + (" day" if buf_days == 1 else " days");
-    }
-
-    """Preview the invite (server validates the addresses) -- no send yet."""
-    async def start_invite(id: str, raw: str) {
-        error = "";
-        note = "";
-        try {
-            r = await invite_collaborators(id=id, emails=raw, confirmed=False);
-            to = "";
-            for e in r["to"] {
-                if to {
-                    to = to + ", " + e;
-                } else {
-                    to = e;
-                }
-            }
-            invite_for = id;
-            invite_to = to;
-            invite_stage = "confirm";
-        } except Exception as e {
-            invite_stage = "";
-            invite_for = "";
-            invite_to = "";
-            error = str(e);
-        }
-    }
-
-    async def do_invite {
-        error = "";
-        busy = "invite";
-        try {
-            await invite_collaborators(
-                id=invite_for,
-                emails=invite_to,
-                confirmed=True
-            );
-            note = "Invite sent to " + invite_to;
-            invite_stage = "";
-            invite_for = "";
-            invite_to = "";
-        } except Exception as e {
-            error = str(e);
-            invite_stage = "";
-            invite_for = "";
-            invite_to = "";
-        } finally {
-            busy = "";
-        }
-    }
-
-    def dismiss_note {
-        note = "";
-    }
-
-    def type_color(kind: str) -> str {
-        if kind == "exam" {
-            return "#e5484d";
-        }
-        if kind == "quiz" {
-            return "#f5a623";
-        }
-        if kind == "assignment" {
-            return "#3b82f6";
-        }
-        if kind == "project" {
-            return "#9333ea";
-        }
-        for t in types {
-            if t.name.lower() == kind {
-                return t.color;
-            }
-        }
-        return "#9e9e9e";
-    }
-
-    def type_label(kind: str) -> str {
-        if kind == "exam" {
-            return "Exam";
-        }
-        if kind == "quiz" {
-            return "Quiz";
-        }
-        if kind == "assignment" {
-            return "Assignment";
-        }
-        if kind == "project" {
-            return "Project";
-        }
-        for t in types {
-            if t.name.lower() == kind {
-                return t.name;
-            }
-        }
-        return "";
-    }
-
-    def custom_types -> list[any] {
-        out: list[any] = [];
-        for t in types {
-            n = t.name.lower();
-            if n != "exam"
-                and n != "quiz"
-                and n != "assignment"
-                and n != "project"
-            {
-                out.append(t);
-            }
-        }
-        return out;
     }
 
     def task_subs(task_id: str) -> list[any] {
@@ -869,8 +669,14 @@ def:pub Planner -> JsxPage {
     def tasks_on(ymd: str) -> list[any] {
         out: list[any] = [];
         for t in tasks {
-            if t.due_date == ymd {
-                out.append(t);
+            if t.due_date == ymd and not t.completed {
+                keep = True;
+                if folder_filter and t.folder_name != folder_filter {
+                    keep = False;
+                }
+                if keep {
+                    out.append(t);
+                }
             }
         }
         return out;
@@ -887,7 +693,7 @@ def:pub Planner -> JsxPage {
                     <button
                         class="np-caltask"
                         key={jid(t)}
-                        style={{"backgroundColor": type_color(t.task_type)}}
+                        style={{"backgroundColor": folder_color(t.folder_name)}}
                         title={t.title}
                         onClick={lambda {
                             quick = "all";
@@ -950,13 +756,6 @@ def:pub Planner -> JsxPage {
                 </button>
             </header>
             {(<div class="np-error">{error}</div>) if error else None}
-            {(<div
-                class="np-note"
-                title="Click to dismiss"
-                onClick={lambda { dismiss_note(); }}
-            >
-                {note}
-            </div>) if note else None}
 
             <div class="np-stats">
                 <span class="np-stat">
@@ -1010,7 +809,7 @@ def:pub Planner -> JsxPage {
                     {(<button
                         key="__all"
                         class={"np-chip " + ("np-chip-on" if not folder_filter else "")}
-                        onClick={lambda { folder_filter = ""; special = ""; }}
+                        onClick={lambda { set_folder(""); }}
                     >
                         All folders
                     </button>) if not manage_f else None}
@@ -1021,7 +820,7 @@ def:pub Planner -> JsxPage {
                                 "np-chip "
                                     + ("np-chip-on" if folder_filter == f.name else "")
                             }
-                            onClick={lambda { folder_filter = f.name; special = ""; }}
+                            onClick={lambda { set_folder(f.name); }}
                         >
                             {f.name}
                         </button>
@@ -1158,8 +957,11 @@ def:pub Planner -> JsxPage {
                                 class="np-ics"
                                 href={ics_url}
                                 download="nudge.ics"
+                                title="Importable .ics -- scoped to the selected folder"
                             >
-                                Download .ics
+                                {("Download .ics (" + folder_filter + ")"
+                                    if folder_filter
+                                    else "Download .ics")}
                             </a>)
                                 if ics_url
                                 else None}
@@ -1173,14 +975,14 @@ def:pub Planner -> JsxPage {
                         <div class="np-calgrid">{cal_grid()}</div>
                         <div class="np-callegend">
                             {[
-                                <span key={k} class="np-legend">
+                                <span key={f.name} class="np-legend">
                                     <span
                                         class="np-dot"
-                                        style={{"backgroundColor": type_color(k)}}
+                                        style={{"backgroundColor": f.color}}
                                     />
-                                    {type_label(k)}
+                                    {f.name}
                                 </span>
-                                for k in ["exam", "quiz", "assignment", "project"]
+                                for f in folders
                             ]}
                         </div>
                     </div>)
@@ -1234,47 +1036,6 @@ def:pub Planner -> JsxPage {
                                     {("Less" if show_meta else "Details")}
                                 </button>
                                 {(<div class="np-add-meta">
-                                    <select
-                                        value={new_type}
-                                        onChange={lambda (e: ChangeEvent) {
-                                            pick_new_type(e.target.value);
-                                        }}
-                                    >
-                                        <option value="">Type</option>
-                                        <option value="exam">Exam</option>
-                                        <option value="quiz">Quiz</option>
-                                        <option value="assignment">Assignment</option>
-                                        <option value="project">Project</option>
-                                        {[
-                                            <option key={t.name} value={t.name.lower()}>
-                                                {t.name}
-                                            </option>
-                                            for t in custom_types()
-                                        ]}
-                                        <option value="__add__">+ add new type…</option>
-                                    </select>
-                                    {(<div class="np-newtype">
-                                        <input
-                                            value={new_type_name}
-                                            onChange={lambda (e: ChangeEvent) {
-                                                new_type_name = e.target.value;
-                                            }}
-                                            placeholder="New type name"
-                                        />
-                                        <button
-                                            onClick={lambda {
-                                                if not busy { do_create_type(); }
-                                            }}
-                                        >
-                                            Add
-                                        </button>
-                                        <button
-                                            class="np-newtype-x"
-                                            onClick={lambda { cancel_new_type(); }}
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>) if type_target == "new" else None}
                                     <input
                                         value={new_location}
                                         onChange={lambda (e: ChangeEvent) {
@@ -1282,22 +1043,15 @@ def:pub Planner -> JsxPage {
                                         }}
                                         placeholder="Location (place / address)"
                                     />
-                                    <input
-                                        value={new_people}
-                                        onChange={lambda (e: ChangeEvent) {
-                                            new_people = e.target.value;
-                                        }}
-                                        placeholder="Collaborators (comma separated)"
-                                    />
                                     <select
                                         value={new_priority}
                                         onChange={lambda (e: ChangeEvent) {
                                             new_priority = e.target.value;
                                         }}
                                     >
-                                        <option value="high">Priority: high</option>
-                                        <option value="medium">Priority: medium</option>
-                                        <option value="low">Priority: low</option>
+                                        <option value="high">HIGH PRIORITY</option>
+                                        <option value="medium">MEDIUM PRIORITY</option>
+                                        <option value="low">LOW PRIORITY</option>
                                     </select>
                                 </div>) if show_meta else None}
                                 {(<div class="np-newtype">
@@ -1402,40 +1156,8 @@ def:pub Planner -> JsxPage {
                                             </button>
                                         </div>
                                         {(<div class="np-detail">
-                                            <div class="np-meta">
-                                                <select
-                                                    class="np-type-sel"
-                                                    style={{"backgroundColor": type_color(t.task_type)}}
-                                                    title="Change type tag"
-                                                    value={t.task_type}
-                                                    onChange={lambda (e: ChangeEvent) {
-                                                        pick_task_type(
-                                                            jid(t),
-                                                            t.folder_name,
-                                                            e.target.value
-                                                        );
-                                                    }}
-                                                >
-                                                    <option value="">Type</option>
-                                                    <option value="exam">Exam</option>
-                                                    <option value="quiz">Quiz</option>
-                                                    <option value="assignment">Assignment</option>
-                                                    <option value="project">Project</option>
-                                                    {[
-                                                        <option key={c.name} value={c.name.lower()}>
-                                                            {c.name}
-                                                        </option>
-                                                        for c in custom_types()
-                                                    ]}
-                                                    <option value="__add__">+ add new type…</option>
-                                                </select>
-                                                {(<span class="np-pri">P:high</span>)
-                                                    if t.priority == "high"
-                                                    else None}
-                                                {(<span class="np-people">{t.people}</span>)
-                                                    if t.people
-                                                    else None}
-                                                {(<a
+                                            {(<div class="np-meta">
+                                                <a
                                                     class="np-room"
                                                     href={maps_href(t.location)}
                                                     target="_blank"
@@ -1443,78 +1165,21 @@ def:pub Planner -> JsxPage {
                                                     title="Open in Google Maps (travel time)"
                                                 >
                                                     📍 {t.location}
-                                                </a>)
-                                                    if t.location
-                                                    else None}
-                                            </div>
-                                            <div class="np-pick">
-                                                <select
-                                                    value={t.folder_name}
-                                                    title="Move to another folder"
-                                                    onChange={lambda (e: ChangeEvent) {
-                                                        pick_task_folder(
-                                                            jid(t),
-                                                            t.task_type,
-                                                            e.target.value
-                                                        );
-                                                    }}
-                                                >
-                                                    {[
-                                                        <option key={f.name} value={f.name}>
-                                                            {f.name}
-                                                        </option>
-                                                        for f in folders
-                                                    ]}
-                                                    <option value="__add__">
-                                                        + add new folder…
-                                                    </option>
-                                                </select>
-                                            </div>
-                                            {(<div class="np-newtype">
-                                                <input
-                                                    value={new_folder_name}
-                                                    onChange={lambda (e: ChangeEvent) {
-                                                        new_folder_name = e.target.value;
-                                                    }}
-                                                    placeholder="New folder name"
-                                                />
-                                                <button
-                                                    onClick={lambda {
-                                                        if not busy { do_add_folder(); }
-                                                    }}
-                                                >
-                                                    Add
-                                                </button>
-                                                <button
-                                                    class="np-newtype-x"
-                                                    onClick={lambda { cancel_new_folder(); }}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>) if folder_target == jid(t) else None}
-                                            {(<div class="np-newtype">
-                                                <input
-                                                    value={new_type_name}
-                                                    onChange={lambda (e: ChangeEvent) {
-                                                        new_type_name = e.target.value;
-                                                    }}
-                                                    placeholder="New type name"
-                                                />
-                                                <button
-                                                    onClick={lambda {
-                                                        if not busy { do_create_type(); }
-                                                    }}
-                                                >
-                                                    Add
-                                                </button>
-                                                <button
-                                                    class="np-newtype-x"
-                                                    onClick={lambda { cancel_new_type(); }}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>) if type_target == jid(t) else None}
+                                                </a>
+                                            </div>) if t.location else None}
                                             <div class="np-actions">
+                                                <select
+                                                    class="np-pri-sel"
+                                                    title="Set priority"
+                                                    value={t.priority}
+                                                    onChange={lambda (e: ChangeEvent) {
+                                                        do_set_priority(jid(t), e.target.value);
+                                                    }}
+                                                >
+                                                    <option value="high">HIGH PRIORITY</option>
+                                                    <option value="medium">MEDIUM PRIORITY</option>
+                                                    <option value="low">LOW PRIORITY</option>
+                                                </select>
                                                 <button
                                                     class="np-ai"
                                                     title="AI breakdown"
@@ -1557,15 +1222,6 @@ def:pub Planner -> JsxPage {
                                                         </a>) if ics_one else None}
                                                     </div>) if cal_menu == jid(t) else None}
                                                 </div>
-                                                {(<button
-                                                    class="np-invite"
-                                                    title="Email an event invite to the collaborators"
-                                                    onClick={lambda {
-                                                        start_invite(jid(t), t.people);
-                                                    }}
-                                                >
-                                                    ✉ invite
-                                                </button>) if t.people else None}
                                                 <button
                                                     class="np-del"
                                                     title="Delete task"
@@ -1574,44 +1230,6 @@ def:pub Planner -> JsxPage {
                                                     ✕
                                                 </button>
                                             </div>
-                                            {(<div class="np-invite-panel">
-                                                <div class="np-invite-head">
-                                                    Send event invite?
-                                                </div>
-                                                <div class="np-invite-to">
-                                                    To: {invite_to}
-                                                </div>
-                                                <div class="np-invite-sub">
-                                                    The invite email carries the event details and a
-                                                    calendar link. Nothing is sent until you press
-                                                    Send.
-                                                </div>
-                                                <div class="np-invite-btns">
-                                                    <button
-                                                        class="np-invite-send"
-                                                        onClick={lambda {
-                                                            if not busy { do_invite(); }
-                                                        }}
-                                                    >
-                                                        {("… sending"
-                                                            if busy == "invite"
-                                                            else "Send invite")}
-                                                    </button>
-                                                    <button
-                                                        class="np-invite-cancel"
-                                                        onClick={lambda {
-                                                            invite_stage = "";
-                                                            invite_for = "";
-                                                            invite_to = "";
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </div>
-                                            </div>)
-                                                if invite_stage == "confirm"
-                                                    and invite_for == jid(t)
-                                                else None}
                                             {(<div class="np-ainote np-busy">
                                                 AI is writing a breakdown -- about 15 seconds…
                                             </div>)

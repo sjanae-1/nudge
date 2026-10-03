@@ -473,16 +473,6 @@ body {
   font-weight: 700;
 }
 
-.np-pri {
-  font-size: 0.7rem;
-  background: #fdecea;
-  color: var(--np-red);
-  border: 1px solid #f5c2c0;
-  padding: 0.12rem 0.5rem;
-  border-radius: 7px;
-  font-weight: 700;
-}
-
 .np-energy {
   font-size: 0.7rem;
   color: var(--np-accent);
@@ -492,8 +482,7 @@ body {
   font-weight: 600;
 }
 
-.np-room,
-.np-people {
+.np-room {
   font-size: 0.7rem;
   color: #556;
   border: 1px solid var(--np-line);
@@ -648,16 +637,6 @@ body {
   flex-wrap: wrap;
   gap: 0.4rem;
   align-items: center;
-}
-
-.np-type {
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border-radius: 999px;
-  padding: 0.1rem 0.6rem;
 }
 
 .np-caret {
@@ -1057,25 +1036,6 @@ body {
   background: #fdecea;
 }
 
-.np-addtype {
-  flex: 0 0 auto;
-  border: 1px dashed #b9bdd3;
-  background: white;
-  color: var(--np-mute);
-  border-radius: 9px;
-  padding: 0.55rem 0.7rem;
-  font-size: 0.85rem;
-  font-family: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.np-addtype:hover {
-  color: var(--np-accent);
-  border-color: var(--np-accent);
-}
-
 .np-newtype {
   flex-basis: 100%;
   display: flex;
@@ -1099,25 +1059,20 @@ body {
   cursor: pointer;
 }
 
-.np-pick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.45rem;
-}
-
-.np-pick select {
+/* per-task priority dropdown (first item of the task actions row) */
+.np-pri-sel {
   border: 1px solid var(--np-line);
   background: white;
   border-radius: 8px;
-  padding: 0.2rem 0.4rem;
+  padding: 0.3rem 0.6rem;
   font-size: 0.75rem;
   font-family: inherit;
+  font-weight: 600;
   color: #4a4f68;
-  max-width: 150px;
+  cursor: pointer;
 }
 
-.np-pick select:focus {
+.np-pri-sel:focus {
   outline: none;
   border-color: var(--np-accent);
 }
@@ -1281,19 +1236,6 @@ a.np-room:hover {
 
 /* ---------- unified dropdowns / done+deleted / invites ---------- */
 
-/* success notification (e.g. invite sent) -- click to dismiss */
-.np-note {
-  background: #e9f7ef;
-  border: 1px solid #bfe6cf;
-  color: #14532d;
-  padding: 0.6rem 0.9rem;
-  border-radius: 10px;
-  margin-bottom: 0.9rem;
-  font-size: 0.86rem;
-  text-align: center;
-  cursor: pointer;
-}
-
 /* fill-in-the-blank "due within N days/weeks" */
 .np-buf input {
   width: 58px;
@@ -1310,31 +1252,6 @@ a.np-room:hover {
 .np-buf input:focus {
   outline: none;
   border-color: var(--np-accent);
-}
-
-/* type control: the badge and the editor are now the same line */
-.np-type-sel {
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border: none;
-  border-radius: 999px;
-  padding: 0.2rem 0.55rem;
-  font-family: inherit;
-  cursor: pointer;
-  max-width: 170px;
-}
-
-.np-type-sel option {
-  background: white;
-  color: #171a2b;
-}
-
-.np-type-sel:focus {
-  outline: 2px solid var(--np-accent);
-  outline-offset: 1px;
 }
 
 /* inline "+ add new ..." row opened from a dropdown */
@@ -1387,80 +1304,6 @@ button.np-gcal {
 .np-calmenu a:hover {
   background: var(--np-accent-soft);
   color: var(--np-accent);
-}
-
-/* collaborator invite */
-.np-invite {
-  border-color: #ffd9c2 !important;
-  color: #c2410c !important;
-  background: #fff4ec !important;
-}
-
-.np-invite:hover {
-  background: #ffe9db !important;
-}
-
-.np-invite-panel {
-  border: 1px solid #f2d9b7;
-  background: #fffaf3;
-  border-radius: 10px;
-  padding: 0.6rem 0.8rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  animation: npIn 0.2s ease both;
-}
-
-.np-invite-head {
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-.np-invite-to {
-  font-size: 0.82rem;
-  color: var(--np-ink);
-  word-break: break-all;
-}
-
-.np-invite-sub {
-  font-size: 0.76rem;
-  color: var(--np-mute);
-}
-
-.np-invite-btns {
-  display: flex;
-  gap: 0.45rem;
-  margin-top: 0.15rem;
-}
-
-.np-invite-send {
-  border: none;
-  background: var(--np-green);
-  color: white;
-  border-radius: 8px;
-  padding: 0.35rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.np-invite-send:hover {
-  background: var(--np-green-dark);
-}
-
-.np-invite-cancel {
-  border: 1px solid var(--np-line);
-  background: white;
-  border-radius: 8px;
-  padding: 0.35rem 0.8rem;
-  font-size: 0.8rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.np-invite-cancel:hover {
-  background: #f3f4fa;
 }
 
 /* Done / Deleted chips get a colored dot */

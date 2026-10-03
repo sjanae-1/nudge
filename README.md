@@ -16,10 +16,12 @@ automatic rollover, and calendar/email integration.
 
 * **AI Task Decomposition:** Breaks overwhelming assignments into dated
   micro-steps (15–45 min each), each with an **editable time estimate**.
-* **Unified dropdowns:** Every changeable setting is one single-line
-  dropdown — the dropdown's first line shows the current value, and the
-  last entry is `+ add new …`, which opens an inline name input (types,
-  folders). No second "edit" icon.
+* **Unified dropdowns:** Folder selection is one single-line dropdown —
+  its first line shows the current value and the last entry is
+  `+ add new …`, which opens an inline name input. No second "edit" icon.
+* **Per-task priority:** each expanded task offers exactly
+  `HIGH PRIORITY / MEDIUM PRIORITY / LOW PRIORITY`, the break-down
+  button, the Calendar dropdown, and ✕ — nothing else.
 * **Dynamic Folders:** Isolates tasks by course or category, with
   reorder/delete management behind the sidebar gear (pinned to the far
   right of the Views+Folders bar).
@@ -31,10 +33,10 @@ automatic rollover, and calendar/email integration.
   **"due within [N] [days/weeks]"** window for the Today view.
 * **One Calendar button per task:** drops down to *Google Calendar* or
   *.ics download* (Apple/Outlook/any calendar).
-* **Collaborator email invites:** a task's collaborators (email
-  addresses) can be sent an automatic event-invite email — the UI always
-  shows a confirmation notice listing the recipients and requires an
-  explicit **Send** before anything goes out.
+* **Folder-filtered calendar & export:** in the calendar view the
+  sidebar folder list acts as a filter over the plotted events, and
+  **Download .ics** exports only the selected folder's tasks (the button
+  names the active folder).
 * **Auto-Rollover:** unfinished past-due tasks shift to today on load.
 * **Mandatory Due Dates** on task creation.
 
@@ -57,12 +59,12 @@ Nudge uses a unified Jac backend (`core/api.jac`, served as a declared
  └──────────────┘              └──────────────┘              └──────────────┘
 ```
 
-* **Server (`core/`):** graph nodes (`Task`, `Folder`, `TypeTag`,
-  `Subtask`), soft-delete (30-day trash), rollover, calendar export
-  (.ics / Google links), invite email (Resend), and `by llm()` prompts.
+* **Server (`core/`):** graph nodes (`Task`, `Folder`, `Subtask`),
+  soft-delete (30-day trash), rollover, calendar export (.ics / Google
+  links, optionally scoped to one folder), and `by llm()` prompts.
 * **Web (`web/`):** full-featured dashboard: list + calendar views,
-  unified dropdowns, Done/Deleted folders, AI breakdown with editable
-  estimates, invite confirmation panel.
+  unified folder dropdowns, Done/Deleted folders, per-task priority,
+  AI breakdown with editable estimates, folder-filtered .ics export.
 * **Mobile (`mobile/`):** lightweight Today/This-week view for rapid
   capture and quick completion on the go.
 * **CLI (`cli/`):** keyboard-driven terminal client; runs the API
@@ -89,7 +91,7 @@ Serves the web UI at `http://localhost:8000` (API on `:8001`).
 ### 2. CLI Interface
 ```bash
 jac run cli -- today
-jac run cli -- add "EECS 449 HW1" --due 2026-10-05 --folder "EECS 449" --people "alex@umich.edu"
+jac run cli -- add "EECS 449 HW1" --due 2026-10-05 --folder "EECS 449" --priority high
 jac run cli -- breakdown <task>
 jac run cli -- done <task_id>
 jac run cli -- all
@@ -106,17 +108,6 @@ time).
 `core.api` is declared as a `service` app in `jac.toml`; when the web app
 runs it is served under `/api/api/function/<name>` with bearer-token
 auth. The web and CLI surfaces both bridge to it.
-
-### Email invites (optional)
-Invite sending uses [Resend](https://resend.com). Without a key the
-whole invite flow still works up to the confirmation notice, and pressing
-Send reports that email isn't configured yet:
-```bash
-export RESEND_API_KEY="re_..."        # API key from resend.com
-# optional overrides:
-# export RESEND_FROM="you@yourdomain.com"   (defaults to onboarding@resend.dev)
-jac run --dev
-```
 
 ## Checks
 

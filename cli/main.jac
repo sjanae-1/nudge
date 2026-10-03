@@ -30,9 +30,6 @@ import from core.api {
     breakdown
 }
 
-# task_type choices offered by `nudge add --type`.
-glob TYPE_CHOICES: list[str] = ["exam", "quiz", "assignment", "project"];
-
 glob PROG: str = "nudge",
      EXIT_OK: int = 0,
      EXIT_FAILURE: int = 1,
@@ -48,17 +45,11 @@ def warn(text: str) {
 def fmt(t: Task, n: int) -> str {
     state = "[x]" if t.completed else "[ ]";
     line = "  " + str(n) + " " + state + " " + t.title + "  (" + t.folder_name + ", due " + t.due_date;
-    if t.task_type {
-        line = line + ", " + t.task_type;
-    }
     if t.priority == "high" {
         line = line + ", P:high";
     }
     if t.location {
         line = line + ", @" + t.location;
-    }
-    if t.people {
-        line = line + ", with " + t.people;
     }
     return line + ")";
 }
@@ -111,8 +102,6 @@ async def cmd_add(
     due: str,
     folder: str,
     priority: str,
-    kind: str,
-    people: str,
     place: str,
 ) -> int {
     d = due;
@@ -123,10 +112,8 @@ async def cmd_add(
         title=title,
         due_date=d,
         folder_name=folder,
-        people=people,
         location=place,
-        priority=priority,
-        task_type=kind
+        priority=priority
     );
     print("added: " + task.title + "  (due " + task.due_date + ", " + task.folder_name + ")");
     subs = await list_subtasks();
@@ -244,8 +231,6 @@ def build_parser -> argparse.ArgumentParser {
     addp.add_argument("--due", `default="", help="due date yyyy-mm-dd (default: today)");
     addp.add_argument("--folder", `default="Miscellaneous", help="folder name (auto-created)");
     addp.add_argument("--priority", choices=["high", "medium", "low"], `default="medium");
-    addp.add_argument("--type", choices=TYPE_CHOICES, `default="", help="exam | quiz | assignment | project");
-    addp.add_argument("--people", `default="", help="collaborators, comma separated");
     addp.add_argument("--location", `default="", help="place / room / address");
 
     commands.add_parser("today", help="today's tasks after the auto-rollover nudge");
@@ -270,8 +255,6 @@ async def dispatch(ns: argparse.Namespace) -> int {
                 due=str(getattr(ns, "due", "") or ""),
                 folder=str(getattr(ns, "folder", "") or "Miscellaneous"),
                 priority=str(getattr(ns, "priority", "") or "medium"),
-                kind=str(getattr(ns, "type", "") or ""),
-                people=str(getattr(ns, "people", "") or ""),
                 place=str(getattr(ns, "location", "") or "")
             );
         }
