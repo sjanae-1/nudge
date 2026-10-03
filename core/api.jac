@@ -343,6 +343,7 @@ def:priv seed_workspace {
         title="Grocery shopping",
         due_date=str(date.fromisoformat(today) + timedelta(days=2)),
         folder_name="Miscellaneous",
+        priority="low",
         created_at=today
     );
 }
