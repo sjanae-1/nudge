@@ -252,6 +252,7 @@ def:pub Planner -> JsxPage {
         today: str = "",
         quick: str = "today",
         filters: list[str] = [],
+        multi: bool = False,
         buf_days: int = 3,
         new_title: str = "",
         new_due: str = "",
@@ -609,11 +610,20 @@ def:pub Planner -> JsxPage {
         }
     }
 
-    """Folder filter toggle -- pick any number of folders (none selected
-    = all folders). Also refreshes the calendar's folder-scoped .ics."""
+    """Folder filter. With the sidebar switch on "One", a click selects only
+    that folder (clicking the active one clears back to every folder).
+    With it on "Many", clicks add / remove folders so any number can be
+    picked (none selected = all folders). Also refreshes the calendar's
+    folder-scoped .ics."""
     async def set_folder(name: str) {
         if not name {
             filters = [];
+        } elif not multi {
+            if len(filters) == 1 and filters[0] == name {
+                filters = [];
+            } else {
+                filters = [name];
+            }
         } elif name in filters {
             filters = [f for f in filters if f != name];
         } else {
@@ -626,6 +636,22 @@ def:pub Planner -> JsxPage {
                 ics_url = await ics_download_url(folders=filters);
             } except Exception as e {
                 error = str(e);
+            }
+        }
+    }
+
+    """Flip the sidebar switch between One (exclusive) and Many (multi)
+    folder selection. Dropping back to One keeps only the first pick."""
+    async def toggle_multi {
+        multi = not multi;
+        if not multi and len(filters) > 1 {
+            filters = [filters[0]];
+            if cal {
+                try {
+                    ics_url = await ics_download_url(folders=filters);
+                } except Exception as e {
+                    error = str(e);
+                }
             }
         }
     }
@@ -1067,16 +1093,25 @@ to one task."""
                     ]}
                     <div class="np-side-title np-side-folders">
                         <span>Folders</span>
-                        <button
-                            class={"np-gear " + ("np-gear-on" if manage_f else "")}
-                            title="Manage folders (reorder / delete)"
-                            onClick={lambda {
-                                manage_f = not manage_f;
-                                color_for = "";
-                            }}
-                        >
-                            ⚙
-                        </button>
+                        <div class="np-fold-tools">
+                            <button
+                                class={"np-multi " + ("np-multi-on" if multi else "")}
+                                title={"Selection mode: " + ("Many -- click a folder to add or remove it from the group." if multi else "One -- clicking a folder shows only that folder.") + " Click to switch."}
+                                onClick={lambda { toggle_multi(); }}
+                            >
+                                {("Many" if multi else "One")}
+                            </button>
+                            <button
+                                class={"np-gear " + ("np-gear-on" if manage_f else "")}
+                                title="Manage folders (reorder / delete)"
+                                onClick={lambda {
+                                    manage_f = not manage_f;
+                                    color_for = "";
+                                }}
+                            >
+                                ⚙
+                            </button>
+                        </div>
                     </div>
                     {(<button
                         key="__all"
@@ -1579,17 +1614,6 @@ to one task."""
                                             </button>
                                         </div>
                                         {(<div class="np-detail">
-                                            {(<div class="np-meta">
-                                                <a
-                                                    class="np-room"
-                                                    href={maps_href(t.location)}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    title="Open in Google Maps (travel time)"
-                                                >
-                                                    📍 {t.location}
-                                                </a>
-                                            </div>) if t.location else None}
                                             {(<div class="np-editgrid">
                                                 <input
                                                     class="np-f-name"
@@ -1737,6 +1761,15 @@ to one task."""
                                                 </button>
                                             </div>) if editing == jid(t) else None}
                                             {(<div class="np-actions">
+                                                {(<a
+                                                    class="np-room"
+                                                    href={maps_href(t.location)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title="Open in Google Maps (travel time)"
+                                                >
+                                                    📍 {t.location}
+                                                </a>) if t.location else None}
                                                 <button
                                                     class="np-ai"
                                                     title="AI breakdown into micro-steps"

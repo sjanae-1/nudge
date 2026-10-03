@@ -11,9 +11,11 @@
   --np-accent-soft: #eef0ff;
   --np-green: #16a34a;
   --np-green-dark: #15803d;
+  --np-green-soft: #e9f9ef;
   --np-violet: #5b3fd6;
   --np-violet-soft: #f4f0ff;
   --np-red: #dc2626;
+  --np-red-soft: #fdecea;
   --np-amber-bg: #fff7dd;
   --np-amber-ink: #7a5b00;
   --np-shadow: 0 1px 2px rgba(23, 26, 43, 0.05), 0 8px 24px -12px rgba(23, 26, 43, 0.12);
@@ -584,20 +586,25 @@ body {
   flex: 0 1 90px;
 }
 
+/* Save changes / Delete Task (inside Make changes) -- same treatment as
+   the AI Breakdown action button, recoloured green / red. */
 .np-savebtn {
-  border: none;
-  background: linear-gradient(120deg, var(--np-green), var(--np-green-dark));
-  color: #fff;
-  border-radius: 9px;
-  padding: 0.5rem 1.1rem;
-  font-weight: 700;
-  font-size: 0.85rem;
+  border: 1px solid #b7e4c0;
+  background: var(--np-green-soft);
+  color: var(--np-green-dark);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
   font-family: inherit;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
 }
 
 .np-savebtn:hover {
-  filter: brightness(1.06);
+  background: #d9f3e2;
+  border-color: var(--np-green);
+  transform: translateY(-1px);
 }
 
 /* ---------- manual step input ---------- */
@@ -698,7 +705,9 @@ body {
 .np-actions {
   display: flex;
   gap: 0.3rem;
-  margin-left: auto;
+  /* Row spans the pane so the location pill can sit flush left while
+     the AI Breakdown / Calendar buttons stay right. */
+  justify-content: flex-end;
 }
 
 .np-actions button {
@@ -731,8 +740,8 @@ body {
 }
 
 .np-del:hover {
-  background: #fdecea;
-  border-color: #f5c2c0;
+  background: #fbdbd8;
+  border-color: var(--np-red);
   color: var(--np-red);
   transform: translateY(-1px);
 }
@@ -1201,6 +1210,42 @@ body {
   color: var(--np-accent);
 }
 
+/* Right-hand tools of the Folders heading: the One / Many selection-mode
+   switch plus the manage-folders gear. */
+.np-fold-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.np-multi {
+  border: 1px solid var(--np-line);
+  background: white;
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem;
+  font-size: 0.62rem;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  cursor: pointer;
+  color: var(--np-mute);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.np-multi:hover {
+  border-color: var(--np-accent);
+  color: var(--np-accent);
+}
+
+.np-multi-on,
+.np-multi-on:hover {
+  background: var(--np-accent-soft);
+  border-color: var(--np-accent);
+  color: var(--np-accent);
+}
+
 .np-mrow {
   display: flex;
   align-items: center;
@@ -1300,11 +1345,19 @@ a.np-room:hover {
   color: var(--np-accent);
 }
 
+/* Location pill rides the action row (AI Breakdown / Calendar) in the
+   expanded pane instead of taking a row of its own. */
+.np-actions a.np-room {
+  align-self: center;
+  font-weight: 500;
+  margin-right: auto;
+}
+
 /* Delete Task button (inside Make changes) -- same pill shape as the
    action buttons, with the red destructive accent. */
 .np-del {
   border: 1px solid #f5c2c0;
-  background: white;
+  background: var(--np-red-soft);
   border-radius: 8px;
   padding: 0.3rem 0.6rem;
   font-size: 0.75rem;
