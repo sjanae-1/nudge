@@ -55,6 +55,9 @@ def fmt(t: Task, n: int) -> str {
     }
     if t.recurrence {
         line = line + ", " + recur_label(t);
+        if t.until {
+            line = line + ", stops " + t.until;
+        }
         if t.start_time and t.end_time {
             line = line + " (" + t.start_time + "-" + t.end_time + ")";
         }
@@ -149,6 +152,7 @@ async def cmd_add(
     priority: str,
     place: str,
     recur: str,
+    until: str,
     start: str,
     end: str,
 ) -> int {
@@ -173,6 +177,7 @@ async def cmd_add(
         location=place,
         priority=priority,
         recurrence=rule,
+        until=until,
         start_time=start,
         end_time=end
     );
@@ -249,14 +254,38 @@ async def cmd_done(target: str) -> int {
         return EXIT_FAILURE;
     }
     if updated.recurrence {
-        print(
-            "done: "
-                + updated.title
-                + " -- "
-                + recur_label(updated)
-                + ", next on "
-                + updated.due_date
-        );
+        if updated.completed {
+            # This occurrence is crossed off; its successor is a new
+            # independent row -- find the date it landed on (or note
+            # that the until stop date ended the series).
+            nxt = "";
+            fresh = await list_tasks();
+            for t2 in fresh {
+                if t2.spawned_from == jid(tasks[i]) and not t2.deleted_at {
+                    nxt = t2.due_date;
+                }
+            }
+            if nxt {
+                print(
+                    "done: "
+                        + updated.title
+                        + " -- "
+                        + recur_label(updated)
+                        + ", next on "
+                        + nxt
+                );
+            } else {
+                print(
+                    "done: "
+                        + updated.title
+                        + " -- "
+                        + recur_label(updated)
+                        + ", series finished"
+                );
+            }
+        } else {
+            print("reopened: " + updated.title);
+        }
     } else {
         if updated.completed {
             print("done: " + updated.title);
@@ -316,6 +345,11 @@ def build_parser -> argparse.ArgumentParser {
     );
     addp.add_argument("--start", `default="", help="start time HH:MM (e.g. 13:00)");
     addp.add_argument("--end", `default="", help="end time HH:MM (e.g. 15:00)");
+    addp.add_argument(
+        "--until",
+        `default="",
+        help="stop repeating after this date yyyy-mm-dd (optional)"
+    );
 
     commands.add_parser("today", help="today's tasks after the auto-rollover nudge");
     commands.add_parser("all", help="every task with its selection number");
@@ -341,6 +375,7 @@ async def dispatch(ns: argparse.Namespace) -> int {
                 priority=str(getattr(ns, "priority", "") or "medium"),
                 place=str(getattr(ns, "location", "") or ""),
                 recur=str(getattr(ns, "recur", "") or ""),
+                until=str(getattr(ns, "until", "") or ""),
                 start=str(getattr(ns, "start", "") or ""),
                 end=str(getattr(ns, "end", "") or "")
             );

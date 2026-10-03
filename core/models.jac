@@ -3,6 +3,11 @@
 Folders hang off root; tasks hang off their folder; subtasks hang off
 their task. Due dates are ISO strings (yyyy-mm-dd) so lexicographic
 comparison is chronological -- that is what powers auto-rollover.
+
+A recurring task is one occurrence per row: `series` links every
+occurrence of the same repeat rule (empty = its own series),
+`spawned_from` points at the occurrence that added it, and `until` is
+the optional "repeat until" stop date (empty = repeats indefinitely).
 """
 
 node Folder {
@@ -30,6 +35,9 @@ node Task {
         ai_note: str = "",
         deleted_at: str = "",
         recurrence: str = "",
+        until: str = "",
+        series: str = "",
+        spawned_from: str = "",
         start_time: str = "",
         end_time: str = "";
 }

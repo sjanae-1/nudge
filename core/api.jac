@@ -79,23 +79,32 @@ def:priv pri_rank(t: Task) -> int {
     return 1;
 }
 
-"""True when a should be listed before b (priority first, then soonest due)."""
+"""True when a should be listed before b: due date first (so overdue
+floats to the top), then priority, then earliest start time (tasks
+without a time sort last), then title for a stable order."""
 def:priv task_before(a: Task, b: Task) -> bool {
+    if a.due_date != b.due_date {
+        return a.due_date < b.due_date;
+    }
     ra = pri_rank(a);
     rb = pri_rank(b);
     if ra != rb {
         return ra < rb;
     }
-    if a.due_date != b.due_date {
-        return a.due_date < b.due_date;
+    sa = a.start_time if a.start_time else "zz:zz";
+    sb = b.start_time if b.start_time else "zz:zz";
+    if sa != sb {
+        return sa < sb;
     }
     return a.title < b.title;
 }
 
-"""Live tasks in display order -- highest priority first, soonest due next.
+"""Live tasks in display order -- due date first, then priority.
 
-Every surface reads its list through here, so changing one task's
-priority re-orders the whole planner immediately.
+Every surface (web, mobile, CLI) reads its list through here, so
+changing a due date or priority re-orders the whole planner
+immediately. Completed tasks are handled by the views: active lists
+skip them and the Done folder shows them.
 """
 def:priv sorted_tasks -> list[Task] {
     remaining = all_tasks();
@@ -232,7 +241,7 @@ def:priv rule_matches(t: Task, d: date) -> bool {
 }
 
 """Next occurrence of a recurring task: strictly after the current due
-date, never before today (completing an occurrence rolls it forward)."""
+date, never before today (the day a completed occurrence spawns next)."""
 def:priv next_occurrence(t: Task, today: str) -> str {
     td = date.fromisoformat(today);
     d = date.fromisoformat(t.due_date) + timedelta(days=1);
@@ -247,20 +256,34 @@ def:priv next_occurrence(t: Task, today: str) -> str {
     return str(d);
 }
 
-"""First occurrence on/after today -- how a stale recurring task catches
-up on rollover (missed occurrences are skipped, not clamped)."""
-def:priv roll_occurrence(t: Task, today: str) -> str {
+"""First rule-matching day on/after today that no other live incomplete
+task in this series already holds -- how a stale recurring task catches
+up on rollover (missed occurrences are skipped, not clamped, and an
+occurrence that was un-checked never collides with its successor)."""
+def:priv free_occurrence(t: Task, today: str) -> str {
+    s = t.series if t.series else jid(t);
     td = date.fromisoformat(today);
-    d = td;
     guard = 0;
     while guard < 800 {
-        if rule_matches(t, d) {
-            return str(d);
+        if rule_matches(t, td) {
+            taken = False;
+            for other in all_tasks() {
+                if other is t or other.completed {
+                    continue;
+                }
+                sid = other.series if other.series else jid(other);
+                if sid == s and other.due_date == str(td) {
+                    taken = True;
+                }
+            }
+            if not taken {
+                return str(td);
+            }
         }
-        d = d + timedelta(days=1);
+        td = td + timedelta(days=1);
         guard = guard + 1;
     }
-    return str(d);
+    return str(td);
 }
 
 """Shift every past-due incomplete task to today. Returns count shifted.
@@ -275,7 +298,7 @@ def:priv run_rollover -> int {
     for t in all_tasks() {
         if not t.completed and t.due_date < today {
             if t.recurrence {
-                t.due_date = roll_occurrence(t, today);
+                t.due_date = free_occurrence(t, today);
             } else {
                 t.due_date = today;
             }
@@ -514,6 +537,7 @@ def:protect add_task(
     location: str = "",
     priority: str = "medium",
     recurrence: str = "",
+    until: str = "",
     start_time: str = "",
     end_time: str = "",
 ) -> Task {
@@ -527,6 +551,16 @@ def:protect add_task(
     if not rule_ok(rec) {
         raise ValueError("unknown recurrence: " + rec);
     }
+    u = until.strip();
+    if u and (len(u) != 10 or u[4] != "-" or u[7] != "-") {
+        raise ValueError("until must be yyyy-mm-dd");
+    }
+    if not rec {
+        u = "";
+    }
+    if u and u < due_date.strip() {
+        raise ValueError("repeat until must be on or after the due date");
+    }
     folder = folder_named(folder_name.strip() or "Miscellaneous");
     task = folder ++> Task(
         title=title.strip(),
@@ -535,6 +569,7 @@ def:protect add_task(
         location=location,
         priority=priority,
         recurrence=rec,
+        until=u,
         start_time=start_time.strip(),
         end_time=end_time.strip(),
         created_at=today_str(),
@@ -543,14 +578,26 @@ def:protect add_task(
     return task;
 }
 
-"""Toggle a task's completed state. A recurring task never stays
-checked: completing it means this occurrence is done, so it rolls
-straight to its next occurrence (same weekday) instead."""
+"""Toggle a task's completed state.
+
+Non-recurring: a plain check / uncheck.
+
+Recurring: every occurrence is its own row. Completing one checks
+THAT occurrence off (it moves to Done) and adds the next occurrence
+to the list as a new independent task, so each occurrence is crossed
+off separately. The series stops at the optional `until` stop date:
+the last rule-matching day on or before `until` is the final
+occurrence. Un-checking simply reactivates the occurrence."""
 def:protect complete_task(id: str) -> Task | None {
     for t in all_tasks() {
         if jid(t) == id {
             if t.recurrence {
-                t.due_date = next_occurrence(t, today_str());
+                if t.completed {
+                    t.completed = False;
+                    return t;
+                }
+                t.completed = True;
+                spawn_next(t);
                 return t;
             }
             t.completed = not t.completed;
@@ -558,6 +605,44 @@ def:protect complete_task(id: str) -> Task | None {
         }
     }
     return None;
+}
+
+"""Add the next occurrence of a just-completed recurring task to the
+list as its own independent task. Returns None when the series is done
+(the next matching day falls after the `until` stop date) or when a
+live incomplete task in the series already holds that day."""
+def:priv spawn_next(t: Task) -> Task | None {
+    nxt = next_occurrence(t, today_str());
+    if t.until and nxt > t.until {
+        return None;
+    }
+    s = t.series if t.series else jid(t);
+    for other in all_tasks() {
+        if other.completed {
+            continue;
+        }
+        sid = other.series if other.series else jid(other);
+        if sid == s and other.due_date == nxt {
+            return None;
+        }
+    }
+    folder = folder_named(t.folder_name);
+    return folder ++> Task(
+        title=t.title,
+        due_date=nxt,
+        folder_name=t.folder_name,
+        people=t.people,
+        location=t.location,
+        priority=t.priority,
+        task_type=t.task_type,
+        recurrence=t.recurrence,
+        until=t.until,
+        series=s,
+        spawned_from=jid(t),
+        start_time=t.start_time,
+        end_time=t.end_time,
+        created_at=today_str()
+    );
 }
 
 """Change a task's fields after creation (task name, due date, folder,
@@ -575,6 +660,7 @@ def:protect update_task(
     title: str = "__keep__",
     due_date: str = "__keep__",
     recurrence: str = "__keep__",
+    until: str = "__keep__",
     start_time: str = "__keep__",
     end_time: str = "__keep__",
 ) -> Task | None {
@@ -604,6 +690,9 @@ def:protect update_task(
                 if len(d) != 10 or d[4] != "-" or d[7] != "-" {
                     raise ValueError("due_date must be yyyy-mm-dd");
                 }
+                if t.recurrence and t.until and t.until < d {
+                    raise ValueError("repeat until must be on or after the due date");
+                }
                 t.due_date = d;
             }
             if recurrence != "__keep__" {
@@ -612,6 +701,19 @@ def:protect update_task(
                     raise ValueError("unknown recurrence: " + r);
                 }
                 t.recurrence = r;
+            }
+            if until != "__keep__" {
+                u = until.strip();
+                if u and (len(u) != 10 or u[4] != "-" or u[7] != "-") {
+                    raise ValueError("until must be yyyy-mm-dd");
+                }
+                if not t.recurrence {
+                    u = "";
+                }
+                if u and u < t.due_date {
+                    raise ValueError("repeat until must be on or after the due date");
+                }
+                t.until = u;
             }
             if start_time != "__keep__" {
                 t.start_time = start_time.strip();
@@ -714,9 +816,23 @@ def:protect create_subtask(
     return None;
 }
 
-"""Every subtask across all tasks (client groups by task_id)."""
+"""Every subtask across all tasks (client groups by task_id).
+Incomplete steps keep their schedule order; completed steps sink to
+the bottom of the list."""
 def:protect list_subtasks -> list[Subtask] {
-    return [s for t in all_tasks() for s in [t-->][?:Subtask]];
+    all_subs = [s for t in all_tasks() for s in [t-->][?:Subtask]];
+    out: list[Subtask] = [];
+    for s in all_subs {
+        if not s.completed {
+            out.append(s);
+        }
+    }
+    for s in all_subs {
+        if s.completed {
+            out.append(s);
+        }
+    }
+    return out;
 }
 
 """Toggle a subtask's completed state."""

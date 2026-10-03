@@ -21,9 +21,12 @@ automatic rollover, and calendar/email integration.
   `+ add new …`, which opens an inline name input. No second "edit" icon.
 * **Per-task priority:** each expanded task offers exactly
   `HIGH PRIORITY / MEDIUM PRIORITY / LOW PRIORITY`, the break-down
-  button, the Calendar dropdown, and ✕ — nothing else. Lists are
-  ordered high → medium → low (soonest due first within a level) and
-  re-order the moment a priority changes.
+  button, the Calendar dropdown, and **Delete Task** — nothing else.
+  Lists are ordered **due date first** (overdue floats to the top),
+  then priority high → medium → low within the same day, then the
+  earliest start time, then title — and re-order the moment a due date
+  or priority changes. Completed tasks move to the `Done` folder, and
+  completed breakdown steps sink to the bottom of their step list.
 * **Dynamic Folders:** Isolates tasks by course or category, with
   reorder/delete management behind the sidebar gear (pinned to the far
   right of the Views+Folders bar). Every folder chip carries its color
@@ -43,6 +46,13 @@ automatic rollover, and calendar/email integration.
   **Download .ics** exports only the selected folder's tasks (the button
   names the active folder).
 * **Auto-Rollover:** unfinished past-due tasks shift to today on load.
+* **Recurring tasks, occurrence by occurrence:** repeat rules (daily,
+  weekdays, every week on a day, monthly, annual) add each occurrence
+  as its own independent row, so you cross them off one at a time;
+  completing one adds the next occurrence to the list. An optional
+  **repeat until** stop date ends the series — the last matching day
+  on or before it is the final occurrence (web create + edit menu,
+  mobile create row, and CLI `--until`).
 * **Mandatory Due Dates** on task creation.
 
 ## Architecture & Component Breakdown
@@ -97,6 +107,7 @@ Serves the web UI at `http://localhost:8000` (API on `:8001`).
 ```bash
 jac run cli -- today
 jac run cli -- add "EECS 449 HW1" --due 2026-10-05 --folder "EECS 449" --priority high
+jac run cli -- add "Team catchup" --due 2026-10-04 --recur weekly --until 2026-12-11
 jac run cli -- breakdown <task>
 jac run cli -- done <task_id>
 jac run cli -- all

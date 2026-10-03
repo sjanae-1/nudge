@@ -264,6 +264,7 @@ def:pub Planner -> JsxPage {
         new_mday: str = "1",
         new_start: str = "13:00",
         new_end: str = "15:00",
+        new_until: str = "",
         ed_title: str = "",
         ed_due: str = "",
         ed_prio: str = "medium",
@@ -274,6 +275,7 @@ def:pub Planner -> JsxPage {
         ed_mday: str = "1",
         ed_start: str = "",
         ed_end: str = "",
+        ed_until: str = "",
         new_step: str = "",
         show_meta: bool = False,
         new_folder_name: str = "",
@@ -372,6 +374,7 @@ def:pub Planner -> JsxPage {
                 recurrence=encode_rule(
                     new_kind, new_wday, new_mmode, new_mday, new_due.strip()
                 ),
+                until=(new_until if new_kind else ""),
                 start_time=(new_start if new_kind else ""),
                 end_time=(new_end if new_kind else "")
             );
@@ -379,6 +382,7 @@ def:pub Planner -> JsxPage {
             new_location = "";
             new_priority = "medium";
             new_kind = "";
+            new_until = "";
             show_meta = False;
             # Surface any AI-created steps for the task we just added.
             await do_expand(jid(t));
@@ -509,6 +513,7 @@ def:pub Planner -> JsxPage {
                 ed_loc = t.location;
                 ed_start = t.start_time;
                 ed_end = t.end_time;
+                ed_until = t.until;
                 ed_kind = "";
                 ed_wday = "6";
                 ed_mmode = "first";
@@ -606,6 +611,7 @@ to one task."""
                 recurrence=encode_rule(
                     ed_kind, ed_wday, ed_mmode, ed_mday, ed_due
                 ),
+                until=(ed_until if ed_kind else ""),
                 start_time=(ed_start if ed_kind else ""),
                 end_time=(ed_end if ed_kind else "")
             );
@@ -1193,12 +1199,13 @@ to one task."""
                                 ›
                             </button>
                             <button
-                                class="np-caltoday"
+                                class="np-caltodaybtn"
                                 title="Jump back to the current month"
                                 onClick={lambda { cal_jump_today(); }}
                             >
                                 Today
                             </button>
+                            <span class="np-calspacer" />
                             {(<a
                                 class="np-ics"
                                 href={ics_url}
@@ -1382,6 +1389,19 @@ to one task."""
                                             placeholder="ends 15:00"
                                         />
                                     </div>) if new_kind != "" else None}
+                                    {(<>
+                                        <span class="np-until-lab">
+                                            repeat until
+                                        </span>
+                                        <input
+                                            type="date"
+                                            value={new_until}
+                                            title="Optional stop date -- the last matching day is the final occurrence. Leave empty to repeat indefinitely."
+                                            onChange={lambda (e: ChangeEvent) {
+                                                new_until = e.target.value;
+                                            }}
+                                        />
+                                    </>) if new_kind != "" else None}
                                 </div>) if show_meta else None}
                                 {(<div class="np-newtype">
                                     <input
@@ -1596,6 +1616,20 @@ to one task."""
                                                         ed_mday = e.target.value;
                                                     }}
                                                 />) if ed_kind == "monthly" and ed_mmode == "day" else None}
+                                                {(<>
+                                                    <span class="np-until-lab">
+                                                        repeat until
+                                                    </span>
+                                                    <input
+                                                        type="date"
+                                                        class="np-f-until"
+                                                        value={ed_until}
+                                                        title="Optional stop date -- the last matching day is the final occurrence. Leave empty to repeat indefinitely."
+                                                        onChange={lambda (e: ChangeEvent) {
+                                                            ed_until = e.target.value;
+                                                        }}
+                                                    />
+                                                </>) if ed_kind != "" else None}
                                                 <input
                                                     class="np-f-time"
                                                     value={ed_start}
@@ -1668,7 +1702,7 @@ to one task."""
                                                     title="Delete task"
                                                     onClick={lambda { do_delete(jid(t)); }}
                                                 >
-                                                    ✕
+                                                    Delete Task
                                                 </button>
                                             </div>
                                             {(<div class="np-ainote np-busy">

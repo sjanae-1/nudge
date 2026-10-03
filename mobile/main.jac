@@ -228,6 +228,18 @@ glob styles = StyleSheet.create({
         "color": "#171a2b",
         "backgroundColor": "#ffffff"
     },
+    "untilInput": {
+        "flex": 1,
+        "minWidth": 170,
+        "borderWidth": 1,
+        "borderColor": "#e7e9f2",
+        "borderRadius": 10,
+        "paddingVertical": 8,
+        "paddingHorizontal": 10,
+        "fontSize": 14,
+        "color": "#171a2b",
+        "backgroundColor": "#ffffff"
+    },
     "empty": {"fontSize": 14, "color": "#7a7f99", "fontStyle": "italic", "paddingVertical": 8},
     "signout": {
         "borderRadius": 999,
@@ -257,7 +269,8 @@ def:pub app -> JsxElement {
         new_folder: str = "",
         new_recur: str = "",
         new_start: str = "13:00",
-        new_end: str = "15:00";
+        new_end: str = "15:00",
+        new_until: str = "";
 
     """Pull today + folders from the shared server (bridged, protected)."""
     async def load {
@@ -367,11 +380,13 @@ def:pub app -> JsxElement {
                 due_date=new_due.strip(),
                 folder_name=new_folder,
                 recurrence=new_recur,
+                until=(new_until if new_recur else ""),
                 start_time=(new_start if new_recur else ""),
                 end_time=(new_end if new_recur else "")
             );
             new_title = "";
             new_recur = "";
+            new_until = "";
             await refresh();
         } except Exception as e {
             error = str(e);
@@ -648,6 +663,13 @@ def:pub app -> JsxElement {
                             onChangeText={lambda (t: str) { new_end = t; }}
                         />
                     </View>) if new_recur == "weekly" else <View/>}
+                    {(<TextInput
+                        style={styles.untilInput}
+                        value={new_until}
+                        placeholder="stops yyyy-mm-dd (optional)"
+                        placeholderTextColor="#8a93a6"
+                        onChangeText={lambda (t: str) { new_until = t; }}
+                    />) if new_recur == "weekly" else <View/>}
                 </View>
             </View>
 
