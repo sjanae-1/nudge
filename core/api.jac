@@ -68,6 +68,53 @@ def:priv all_tasks -> list[Task] {
     return out;
 }
 
+"""Priority rank for ordering: high (0) before medium (1) before low (2)."""
+def:priv pri_rank(t: Task) -> int {
+    if t.priority == "high" {
+        return 0;
+    }
+    if t.priority == "low" {
+        return 2;
+    }
+    return 1;
+}
+
+"""True when a should be listed before b (priority first, then soonest due)."""
+def:priv task_before(a: Task, b: Task) -> bool {
+    ra = pri_rank(a);
+    rb = pri_rank(b);
+    if ra != rb {
+        return ra < rb;
+    }
+    if a.due_date != b.due_date {
+        return a.due_date < b.due_date;
+    }
+    return a.title < b.title;
+}
+
+"""Live tasks in display order -- highest priority first, soonest due next.
+
+Every surface reads its list through here, so changing one task's
+priority re-orders the whole planner immediately.
+"""
+def:priv sorted_tasks -> list[Task] {
+    remaining = all_tasks();
+    out: list[Task] = [];
+    while len(remaining) > 0 {
+        bi = 0;
+        i = 1;
+        while i < len(remaining) {
+            if task_before(remaining[i], remaining[bi]) {
+                bi = i;
+            }
+            i = i + 1;
+        }
+        out.append(remaining[bi]);
+        remaining = remaining[:bi] + remaining[bi + 1 :];
+    }
+    return out;
+}
+
 def:priv folder_named(name: str) -> Folder {
     for f in all_folders() {
         if f.name == name {
@@ -152,6 +199,7 @@ def:priv seed_workspace {
         title="Finish ACC 302 Practice Exam 1",
         due_date=str(date.fromisoformat(today) + timedelta(days=3)),
         folder_name="ACC 302",
+        location="Ross School of Business",
         created_at=today
     );
     f_eecs ++> Task(
@@ -278,10 +326,10 @@ def:protect set_folder_color(name: str, color: str) -> Folder | None {
 
 # --- Task endpoints ---
 
-"""All tasks, after running the auto-rollover pass."""
+"""All tasks in priority order, after running the auto-rollover pass."""
 def:protect list_tasks -> list[Task] {
     run_rollover();
-    return all_tasks();
+    return sorted_tasks();
 }
 
 """How many past-due incomplete tasks were rolled over (for the UI nudge)."""
@@ -365,12 +413,21 @@ def:protect complete_task(id: str) -> Task | None {
     return None;
 }
 
-"""Change a task's folder and/or priority after creation."""
-def:protect update_task(id: str, folder_name: str = "", priority: str = "") -> Task | None {
+"""Change a task's folder, priority, and/or location after creation
+(a blank argument leaves that field unchanged)."""
+def:protect update_task(
+    id: str,
+    folder_name: str = "",
+    priority: str = "",
+    location: str = "",
+) -> Task | None {
     for t in all_tasks() {
         if jid(t) == id {
             if folder_name.strip() {
                 t.folder_name = folder_named(folder_name.strip()).name;
+            }
+            if location.strip() {
+                t.location = location.strip();
             }
             if priority.strip() {
                 p = priority.strip().lower();

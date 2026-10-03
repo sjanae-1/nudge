@@ -1433,3 +1433,11 @@ button.np-gcal {
   font-size: 0.72rem;
   color: var(--np-mute);
 }
+
+/* calendar: explains folder filtering + folder-scoped .ics import */
+.np-calhint {
+  font-size: 0.78rem;
+  color: var(--np-mute);
+  font-style: italic;
+  margin: 0.35rem 0 0.15rem;
+}

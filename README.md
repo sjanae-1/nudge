@@ -21,7 +21,9 @@ automatic rollover, and calendar/email integration.
   `+ add new …`, which opens an inline name input. No second "edit" icon.
 * **Per-task priority:** each expanded task offers exactly
   `HIGH PRIORITY / MEDIUM PRIORITY / LOW PRIORITY`, the break-down
-  button, the Calendar dropdown, and ✕ — nothing else.
+  button, the Calendar dropdown, and ✕ — nothing else. Lists are
+  ordered high → medium → low (soonest due first within a level) and
+  re-order the moment a priority changes.
 * **Dynamic Folders:** Isolates tasks by course or category, with
   reorder/delete management behind the sidebar gear (pinned to the far
   right of the Views+Folders bar). Every folder chip carries its color

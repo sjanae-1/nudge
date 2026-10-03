@@ -1035,6 +1035,13 @@ def:pub Planner -> JsxPage {
                                 if ics_url
                                 else None}
                         </div>
+                        <div class="np-calhint">
+                            {("Showing only \""
+                                + folder_filter
+                                + "\" -- Download .ics exports just this folder."
+                                if folder_filter
+                                else "Filter these events with the folder list on the left -- Download .ics exports only the folder you pick.")}
+                        </div>
                         <div class="np-calgrid np-calwd">
                             {[
                                 <span key={w} class="np-cald">{w}</span>
