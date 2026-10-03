@@ -16,6 +16,8 @@ automatic rollover, and calendar/email integration.
 
 * **AI Task Decomposition:** Breaks overwhelming assignments into dated
   micro-steps (15–45 min each), each with an **editable time estimate**.
+  Fresh accounts ship with a seeded example already broken down under
+  *Grocery shopping*.
 * **Unified dropdowns:** Folder selection is one single-line dropdown —
   its first line shows the current value and the last entry is
   `+ add new …`, which opens an inline name input. No second "edit" icon.
@@ -45,7 +47,10 @@ automatic rollover, and calendar/email integration.
   sidebar folder list acts as a filter over the plotted events, and
   **Download .ics** exports only the selected folder's tasks (the button
   names the active folder).
-* **Auto-Rollover:** unfinished past-due tasks shift to today on load.
+* **Auto-Rollover + overdue nudge:** unfinished past-due tasks shift
+  to today on load. A nudged task keeps a red `was <date>` marker in
+  the list plus a one-click **→ tomorrow** push, genuinely past-due
+  dates render red, and the banner reports how many were nudged.
 * **Recurring tasks, occurrence by occurrence:** repeat rules (daily,
   weekdays, every week on a day, monthly, annual) add each occurrence
   as its own independent row, so you cross them off one at a time;

@@ -8,6 +8,8 @@ A recurring task is one occurrence per row: `series` links every
 occurrence of the same repeat rule (empty = its own series),
 `spawned_from` points at the occurrence that added it, and `until` is
 the optional "repeat until" stop date (empty = repeats indefinitely).
+`rolled_from` remembers the date an overdue task carried before
+auto-rollover nudged it forward (empty = never nudged).
 """
 
 node Folder {
@@ -38,6 +40,7 @@ node Task {
         until: str = "",
         series: str = "",
         spawned_from: str = "",
+        rolled_from: str = "",
         start_time: str = "",
         end_time: str = "";
 }

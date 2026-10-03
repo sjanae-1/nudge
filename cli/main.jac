@@ -204,9 +204,9 @@ async def cmd_today -> int {
     if shifted > 0 {
         print(
             str(shifted)
-                + " past-due task"
+                + " overdue task"
                 + ("s" if shifted != 1 else "")
-                + " rolled over to today"
+                + " nudged to today"
         );
     }
     today = await current_date();

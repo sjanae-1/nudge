@@ -289,6 +289,8 @@ def:priv free_occurrence(t: Task, today: str) -> str {
 """Shift every past-due incomplete task to today. Returns count shifted.
 
 Recurring tasks step to their next occurrence instead of clamping.
+A clamped task keeps its previous due date in `rolled_from`, so the
+UI can flag what was nudged (and offer a push to tomorrow).
 Incomplete subtasks with a past-due date shift too (silently), so the
 AI-paced step deadlines keep pacing instead of going stale.
 """
@@ -300,6 +302,7 @@ def:priv run_rollover -> int {
             if t.recurrence {
                 t.due_date = free_occurrence(t, today);
             } else {
+                t.rolled_from = t.due_date;
                 t.due_date = today;
             }
             shifted = shifted + 1;
@@ -362,12 +365,40 @@ def:priv seed_workspace {
         end_time="15:00",
         created_at=today
     );
-    f_misc ++> Task(
+    gdue = str(date.fromisoformat(today) + timedelta(days=2));
+    g = f_misc ++> Task(
         title="Grocery shopping",
-        due_date=str(date.fromisoformat(today) + timedelta(days=2)),
+        due_date=gdue,
         folder_name="Miscellaneous",
         priority="low",
         created_at=today
+    );
+    # Seeded AI-breakdown example: paced 15-45 minute micro-steps
+    # between today and the due date, exactly what AI Breakdown
+    # produces -- so a fresh account sees a finished example.
+    g ++> Subtask(
+        title="Check the fridge and pantry, then write the shopping list",
+        task_id=jid(g),
+        est_minutes=10,
+        due_date=today
+    );
+    g ++> Subtask(
+        title="Plan meals for the week and check what is on sale",
+        task_id=jid(g),
+        est_minutes=15,
+        due_date=str(date.fromisoformat(today) + timedelta(days=1))
+    );
+    g ++> Subtask(
+        title="Shop the list and compare store brands on the essentials",
+        task_id=jid(g),
+        est_minutes=45,
+        due_date=gdue
+    );
+    g ++> Subtask(
+        title="Put groceries away and note anything to restock next time",
+        task_id=jid(g),
+        est_minutes=10,
+        due_date=gdue
     );
 }
 
@@ -601,6 +632,7 @@ def:protect complete_task(id: str) -> Task | None {
                 return t;
             }
             t.completed = not t.completed;
+            t.rolled_from = "";
             return t;
         }
     }
@@ -694,6 +726,7 @@ def:protect update_task(
                     raise ValueError("repeat until must be on or after the due date");
                 }
                 t.due_date = d;
+                t.rolled_from = "";
             }
             if recurrence != "__keep__" {
                 r = recurrence.strip();

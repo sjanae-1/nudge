@@ -317,9 +317,9 @@ def:pub Planner -> JsxPage {
             if shifted > 0 {
                 rollover_note = (
                     str(shifted)
-                    + " past-due task"
+                    + " overdue task"
                     + ("s" if shifted != 1 else "")
-                    + " rolled over to today"
+                    + " nudged to today"
                 );
             }
             folders = await list_folders();
@@ -420,12 +420,32 @@ def:pub Planner -> JsxPage {
         }
     }
 
+    """One-click rescue for a nudged task: push it one more day."""
+    async def do_push(id: str) {
+        error = "";
+        try {
+            found: list[str] = [];
+            for t in tasks {
+                if jid(t) == id {
+                    found.append(t.due_date);
+                }
+            }
+            if len(found) > 0 {
+                await update_task(id=id, due_date=ymd_add(found[0], 1));
+            }
+            await refresh();
+        } except Exception as e {
+            error = str(e);
+        }
+    }
+
     async def do_breakdown(id: str) {
         error = "";
         busy = id;
         try {
             await breakdown(id);
             expanded = id;
+            editing = "";
             await refresh();
         } except Exception as e {
             error = str(e);
@@ -506,6 +526,7 @@ def:pub Planner -> JsxPage {
             return;
         }
         expanded = id;
+        editing = "";
         ics_one = "";
         cal_menu = "";
         try {
@@ -522,6 +543,7 @@ def:pub Planner -> JsxPage {
             return;
         }
         editing = id;
+        expanded = "";
         # Seed the edit form from this task's current fields.
         for t in tasks {
             if jid(t) == id {
@@ -1522,11 +1544,25 @@ to one task."""
                                             </span>
                                             <span class={
                                                     "np-due "
+                                                        + ("np-due-over " if today and t.due_date < today else "")
                                                         + ("np-due-today" if today and t.due_date <= ymd_add(today, buf_days) else "")
                                                 }
                                             >
                                                 {t.due_date}
                                             </span>
+                                            {(<span
+                                                class="np-was"
+                                                title={"nudged from " + t.rolled_from}
+                                            >
+                                                was {t.rolled_from}
+                                            </span>) if t.rolled_from and not t.completed else None}
+                                            {(<button
+                                                class="np-pushbtn"
+                                                title="Push this nudged task to tomorrow"
+                                                onClick={lambda { do_push(jid(t)); }}
+                                            >
+                                                → tomorrow
+                                            </button>) if t.rolled_from and not t.completed else None}
                                             <button
                                                 class="np-editbtn"
                                                 title="Edit name, date, priority, location, time and repeat"
@@ -1743,13 +1779,6 @@ to one task."""
                                                         </a>) if ics_one else None}
                                                     </div>) if cal_menu == jid(t) else None}
                                                 </div>
-                                                <button
-                                                    class="np-del"
-                                                    title="Delete task"
-                                                    onClick={lambda { do_delete(jid(t)); }}
-                                                >
-                                                    Delete Task
-                                                </button>
                                             </div>) if expanded == jid(t) else None}
                                             {(<div class="np-ainote np-busy">
                                                 AI is writing a breakdown -- about 15 seconds…

@@ -200,6 +200,7 @@ glob styles = StyleSheet.create({
     "rowTitle": {"fontSize": 15, "color": "#171a2b", "fontWeight": "600"},
     "rowTitleDone": {"fontSize": 15, "color": "#9aa0b5", "fontWeight": "600", "textDecorationLine": "line-through"},
     "rowMeta": {"fontSize": 12, "color": "#7b8098"},
+    "rowMetaRolled": {"fontSize": 12, "color": "#dc2626", "fontWeight": "700"},
     "metaRow": {"flexDirection": "row", "alignItems": "center", "gap": 6, "flexWrap": "wrap"},
     "badgeText": {"fontSize": 11, "color": "#ffffff", "fontWeight": "700"},
     "loc": {"fontSize": 12, "color": "#7b8098"},
@@ -709,7 +710,13 @@ def:pub app -> JsxElement {
                                     {t.folder_name}
                                 </Text>
                             </View>
-                            <Text style={styles.rowMeta}>
+                            <Text
+                                style={
+                                    styles.rowMetaRolled
+                                        if t.rolled_from
+                                        else styles.rowMeta
+                                }
+                            >
                                 {"due " + t.due_date}
                             </Text>
                         </View>
@@ -756,7 +763,13 @@ def:pub app -> JsxElement {
                                     {t.folder_name}
                                 </Text>
                             </View>
-                            <Text style={styles.rowMeta}>
+                            <Text
+                                style={
+                                    styles.rowMetaRolled
+                                        if t.rolled_from
+                                        else styles.rowMeta
+                                }
+                            >
                                 {"due " + t.due_date}
                             </Text>
                         </View>

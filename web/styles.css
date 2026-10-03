@@ -488,6 +488,35 @@ body {
   align-self: center;
 }
 
+/* overdue nudge marker + one-click push to tomorrow */
+.np-was {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--np-red);
+  background: #fdecea;
+  padding: 0.18rem 0.55rem;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
+.np-pushbtn {
+  border: 1px solid #f5c2c0;
+  background: var(--np-amber-bg, #fff7ed);
+  color: #b45309;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.24rem 0.7rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.np-pushbtn:hover {
+  border-color: #f59e0b;
+  background: #ffedd5;
+}
+
 /* ---------- task edit menu ("Make changes") ---------- */
 .np-editbtn {
   margin-left: auto;
@@ -637,6 +666,13 @@ body {
   font-weight: 700;
 }
 
+/* a due date that is genuinely in the past */
+.np-due-over {
+  background: #fdecea;
+  color: var(--np-red);
+  font-weight: 700;
+}
+
 .np-energy {
   font-size: 0.7rem;
   color: var(--np-accent);
@@ -695,9 +731,10 @@ body {
 }
 
 .np-del:hover {
-  background: #fdecea !important;
-  border-color: #f5c2c0 !important;
-  color: var(--np-red) !important;
+  background: #fdecea;
+  border-color: #f5c2c0;
+  color: var(--np-red);
+  transform: translateY(-1px);
 }
 
 /* ---------- subtasks (AI breakdown) ---------- */
@@ -1263,11 +1300,19 @@ a.np-room:hover {
   color: var(--np-accent);
 }
 
-/* red X delete (task + steps) */
+/* Delete Task button (inside Make changes) -- same pill shape as the
+   action buttons, with the red destructive accent. */
 .np-del {
-  color: var(--np-red) !important;
-  border-color: #f5c2c0 !important;
-  font-weight: 700;
+  border: 1px solid #f5c2c0;
+  background: white;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--np-red);
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
 }
 
 .np-sub-pen,
