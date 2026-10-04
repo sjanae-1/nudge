@@ -38,9 +38,10 @@ Click on **Create account** on the login page to register for a new account.
 jac run cli -- login <username>         # sign in: CLI then shows YOUR web tasks
 jac run cli -- logout                   # back to the shared anonymous list
 jac run cli -- today                    # what is due soon
-jac run cli -- all                      # every open task
+jac run cli -- all                      # assign every open task with a number
 jac run cli -- add "EECS 449 HW1" --due 2026-10-05 --folder "EECS 449" --priority high
 jac run cli -- add "Team catchup" --due 2026-10-04 --recur weekly --until 2026-12-11
+# For the following commands, replace <task> with task number
 jac run cli -- breakdown <task>         # AI micro-steps
 jac run cli -- done <task>              # task number or title fragment
 jac run cli -- delete <task>            # move a task to the Delete folder
@@ -53,19 +54,14 @@ what the web app shows.
 
 ## Mobile App
 
+A lightweight Today / This-week view for quick capture and completion on the go.
+
 ```bash
 # stop the web dev server first — both claim the 800x ports
 jac run _prepare_mobile_web.jac         # one-shot: compile the mobile client for the browser preview
 jac run --dev --platform web mobile     # preview in a browser (react-native-web)
 jac run --dev mobile                    # native: scan the Expo Go QR (press i / a)
 ```
-
-The one-shot prepare step is required on a fresh clone (and again after
-`jac clean`): it writes `.jac/client/mobile/compiled/`, which the dev
-server's index.html imports.
-
-First native run scaffolds the Expo project and installs npm deps (one-time).
-A lightweight Today / This-week view for quick capture and completion on the go.
 
 ## How the four components fit together
 
