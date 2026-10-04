@@ -8,6 +8,9 @@ node_modules/
 _run.log
 _*.log
 
+# CLI login session (carries a bearer token)
+.nudge-session.json
+
 # OS cruft
 .DS_Store
 

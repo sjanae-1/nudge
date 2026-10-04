@@ -8,18 +8,26 @@ versa. Start the web app first:
     jac run cli -- today       # terminal 2
     jac run cli -- add "Write lab report" --due 2026-10-05 --priority high
     jac run cli -- all
+    jac run cli -- login janae       # sign in: CLI then shows YOUR web tasks
     jac run cli -- done "lab"
     jac run cli -- breakdown "lab"
+    jac run cli -- delete "lab"
 """
 
 import argparse;
 import asyncio;
+import json;
+import os;
 import sys;
 
 import from datetime { date }
+import from getpass { getpass }
+import from urllib.error { HTTPError }
+import from urllib.request { Request, urlopen }
 
 import from jaclang.server.bridge { BridgeError }
 import from jaclang.server { sv_client }
+import from jaclang.project.config { get_config }
 import core.api as api_mod;
 import from core.models { Task, Subtask }
 import from core.api {
@@ -27,6 +35,7 @@ import from core.api {
     list_tasks,
     add_task,
     complete_task,
+    delete_task,
     rollover_status,
     list_subtasks,
     breakdown
@@ -38,10 +47,100 @@ glob PROG: str = "nudge",
      EXIT_USAGE: int = 2,
      EXIT_UNAVAILABLE: int = 3;
 
-glob START_HINT: str = "hint: start the app first with `jac run` in another terminal";
+glob START_HINT: str = "hint: start the app first with `jac run` in another terminal",
+     SESSION_FILE: str = ".nudge-session.json";
 
 def warn(text: str) {
     print(text, file=sys.stderr);
+}
+
+"""Where the saved login session lives (project root, else cwd)."""
+def session_path -> str {
+    try {
+        cfg = get_config();
+        if cfg is not None {
+            return os.path.join(str(cfg.project_root), SESSION_FILE);
+        }
+    } except Exception {}
+    return os.path.join(os.getcwd(), SESSION_FILE);
+}
+
+"""Saved session ({username, root_id, token}) or {} when absent/unreadable."""
+def load_session -> dict[str, any] {
+    try {
+        p = session_path();
+        if not os.path.exists(p) {
+            return {};
+        }
+        with open(p, "r") as f {
+            data = json.loads(f.read());
+        }
+        if isinstance(data, dict) {
+            return data;
+        }
+    } except Exception as e {
+        warn("nudge: could not read session " + session_path() + ": " + str(e));
+    }
+    return {};
+}
+
+def save_session(data: dict[str, any]) -> str {
+    p = session_path();
+    with open(p, "w") as f {
+        f.write(json.dumps(data, indent=2));
+    }
+    try {
+        os.chmod(p, 420);  # 0o600 -- the session carries a bearer token
+    } except Exception {}
+    return p;
+}
+
+"""Push an execution context scoped to one account's graph root.
+
+This is the same move the HTTP middleware makes for a logged-in browser
+request (`ctx.aset_user_root(root_id)`): every `core.api` call that runs
+while this context is current reads and writes THAT root instead of the
+anonymous super-root. Returns the token needed to undo it.
+"""
+def bind_user_root(root_id: str) -> any {
+    import from jaclang { JacRuntime }
+    import from jaclang.runtime.context { ExecutionContext }
+    parent = JacRuntime.get_context();
+    ctx = ExecutionContext(_parent=parent);
+    ctx.set_user_root(root_id);
+    return JacRuntime.push_request_context(ctx);
+}
+
+def unbind_user_root(token: any) -> None {
+    import from jaclang { JacRuntime }
+    JacRuntime.reset_request_context(token);
+}
+
+"""POST JSON and parse the {ok, data|error} envelope.
+
+HTTP error statuses (401/422/...) come back as the parsed envelope --
+the server answered, so that answer is authoritative. Connection
+failures raise, so the caller may retry another base URL.
+"""
+def http_post_json(url: str, payload: dict[str, any]) -> dict[str, any] {
+    body = json.dumps(payload).encode("utf-8");
+    req = Request(url, data=body, headers={"Content-Type": "application/json"});
+    raw = "";
+    try {
+        with urlopen(req, timeout=10) as resp {
+            raw = resp.read().decode("utf-8");
+        }
+    } except HTTPError as e {
+        raw = "";
+        try {
+            raw = e.read().decode("utf-8");
+        } except Exception {}
+    }
+    data = json.loads(raw) if raw else {};
+    if not isinstance(data, dict) {
+        raise ValueError("unexpected response from " + url);
+    }
+    return data;
 }
 
 def fmt(t: Task, n: int) -> str {
@@ -296,6 +395,91 @@ async def cmd_done(target: str) -> int {
     return EXIT_OK;
 }
 
+async def cmd_delete(target: str) -> int {
+    tasks = await list_tasks();
+    i = resolve(tasks, target);
+    if i < 0 {
+        return EXIT_FAILURE;
+    }
+    t = tasks[i];
+    res = await delete_task(jid(t));
+    if not res {
+        warn("nudge: could not delete " + t.title);
+        return EXIT_FAILURE;
+    }
+    print("deleted: " + t.title + "  (moved to the Delete folder -- restorable in the web app)");
+    return EXIT_OK;
+}
+
+"""Try each API base until one answers; raise if none is reachable."""
+def post_to_api(bases: list[str], path: str, payload: dict[str, any]) -> dict[str, any] {
+    last: any = None;
+    for base in bases {
+        url = base.rstrip("/") + path;
+        try {
+            return http_post_json(url, payload);
+        } except Exception as e {
+            last = e;
+        }
+    }
+    raise RuntimeError("could not reach the API: " + str(last));
+}
+
+async def cmd_login(username: str, password: str, api: str) -> int {
+    pw = password;
+    if not pw {
+        pw = getpass("password for " + username + ": ");
+    }
+    bases: list[str] = [];
+    if api {
+        bases.append(api);
+    } else {
+        bases.append("http://localhost:8001");
+        bases.append("http://localhost:8000");
+    }
+    payload = {
+        "identity": {"type": "username", "value": username},
+        "credential": {"type": "password", "password": pw}
+    };
+    try {
+        env = post_to_api(bases, "/user/login", payload);
+    } except Exception as e {
+        warn("nudge: login failed: " + str(e));
+        warn(START_HINT);
+        return EXIT_UNAVAILABLE;
+    }
+    if not env.get("ok") {
+        warn("nudge: login failed: " + str(env.get("error", "rejected")));
+        return EXIT_FAILURE;
+    }
+    data = env.get("data") or {};
+    root_id = str(data.get("root_id", ""));
+    token = str(data.get("token", ""));
+    if not root_id {
+        warn("nudge: login response had no root_id");
+        return EXIT_FAILURE;
+    }
+    p = save_session({
+        "username": username,
+        "root_id": root_id,
+        "token": token
+    });
+    print("logged in as " + username + " -- `nudge all` now shows your account's tasks");
+    print("session saved in " + p);
+    return EXIT_OK;
+}
+
+async def cmd_logout -> int {
+    p = session_path();
+    if os.path.exists(p) {
+        os.remove(p);
+        print("logged out -- CLI is back on the shared anonymous list");
+    } else {
+        print("no saved session -- already logged out");
+    }
+    return EXIT_OK;
+}
+
 async def cmd_breakdown(target: str) -> int {
     tasks = await list_tasks();
     i = resolve(tasks, target);
@@ -361,6 +545,24 @@ def build_parser -> argparse.ArgumentParser {
         "breakdown", help="AI-decompose a task into 15-45 minute micro-steps"
     );
     breakp.add_argument("target", help="task number (from `all`) or title fragment");
+
+    delp = commands.add_parser(
+        "delete", help="delete a task (moves it to the Delete folder)"
+    );
+    delp.add_argument("target", help="task number (from `all`) or title fragment");
+
+    loginp = commands.add_parser(
+        "login",
+        help="sign in so the CLI reads/writes YOUR account's tasks (same list as web/mobile)"
+    );
+    loginp.add_argument("username", help="username or email");
+    loginp.add_argument("--password", `default="", help="password (prompted if omitted)");
+    loginp.add_argument(
+        "--api",
+        `default="",
+        help="API base URL (default: try localhost:8001, then localhost:8000)"
+    );
+    commands.add_parser("logout", help="sign out and forget the saved session");
     return parser;
 }
 
@@ -392,6 +594,19 @@ async def dispatch(ns: argparse.Namespace) -> int {
         if cmd == "breakdown" {
             return await cmd_breakdown(str(getattr(ns, "target", "") or ""));
         }
+        if cmd == "delete" {
+            return await cmd_delete(str(getattr(ns, "target", "") or ""));
+        }
+        if cmd == "login" {
+            return await cmd_login(
+                username=str(getattr(ns, "username", "") or ""),
+                password=str(getattr(ns, "password", "") or ""),
+                api=str(getattr(ns, "api", "") or "")
+            );
+        }
+        if cmd == "logout" {
+            return await cmd_logout();
+        }
         warn(PROG + ": unknown command");
         return EXIT_USAGE;
     } except BridgeError as e {
@@ -405,6 +620,14 @@ async def dispatch(ns: argparse.Namespace) -> int {
 }
 
 async def main(argv: list[str]) -> int {
+    # The serializer logs one INFO line per cross-app class alias the
+    # first time each resolves (see core.models.__jac_schema__ docs) --
+    # every run is a fresh process, so keep that chatter off the terminal.
+    # Genuine warnings/errors still print.
+    try {
+        import logging;
+        logging.getLogger("jaclang.data.serializer").setLevel(logging.WARNING);
+    } except Exception {}
     # Run the shared planner service in this process (colocated), so the
     # terminal uses the exact same core.api code + database as web/mobile.
     try {
@@ -413,7 +636,27 @@ async def main(argv: list[str]) -> int {
         warn("nudge: could not colocate core.api: " + str(e));
     }
     parser = build_parser();
-    return await dispatch(parser.parse_args(argv));
+    ns = parser.parse_args(argv);
+    # A saved session scopes every core.api call to that account's graph
+    # root -- the same binding the HTTP middleware does for the browser.
+    token: any = None;
+    session = {} if str(getattr(ns, "command", "")) in ["login", "logout"] else load_session();
+    root_id = str(session.get("root_id", "")) if session else "";
+    if root_id {
+        try {
+            token = bind_user_root(root_id);
+        } except Exception as e {
+            warn("nudge: could not use saved session: " + str(e));
+            warn("hint: `nudge logout` then `nudge login <username>` again");
+        }
+    }
+    try {
+        return await dispatch(ns);
+    } finally {
+        if token is not None {
+            unbind_user_root(token);
+        }
+    }
 }
 
 with entry:__main__ {
