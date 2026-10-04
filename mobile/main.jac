@@ -5,6 +5,7 @@ bridge to the same protected core.api endpoints, so a task added on the
 phone shows up in the browser and the terminal (and vice versa) -- the
 server persists every plan between sessions.
 
+    jac run _prepare_mobile_web.jac       # one-shot: write compiled/_entry.js
     jac run --dev --platform web mobile   # browser preview (react-native-web)
     jac run --dev mobile                  # Metro + Expo Go QR
     jac build mobile --platform android   # native build

@@ -54,9 +54,16 @@ what the web app shows.
 
 ```bash
 # stop the web dev server first — both claim the 800x ports
+jac run _prepare_mobile_web.jac         # one-shot: compile the mobile client for the browser preview
 jac run --dev --platform web mobile     # preview in a browser (react-native-web)
 jac run --dev mobile                    # native: scan the Expo Go QR (press i / a)
 ```
+
+The one-shot prepare step is required on a fresh clone (and again after
+`jac clean`): it writes `.jac/client/mobile/compiled/`, which the dev
+server's index.html imports. Without it the browser shows a Vite error
+overlay — `[plugin:vite:import-analysis] Failed to resolve import
+"/mobile/compiled/_entry.js"` — because that file does not exist yet.
 
 First native run scaffolds the Expo project and installs npm deps (one-time).
 A lightweight Today / This-week view for quick capture and completion on the go.
