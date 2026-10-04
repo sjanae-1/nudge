@@ -48,8 +48,7 @@ jac run cli -- logout                   # back to the shared anonymous list
 The CLI runs the API colocated in-process, so it hits the same database even
 when the web server is off. Each account has its own task graph: run `login`
 with the same username you use in the browser and `all` will list exactly
-what the web app shows. Without a saved session the CLI reads the anonymous
-list (which is not your account's).
+what the web app shows.
 
 ## Mobile App
 
@@ -93,5 +92,4 @@ Three things that make it impressive:
    weekdays, every week on a day, monthly, annual) add each occurrence as
    its own independent row; completing
    one adds the next occurrence to the list. An optional **repeat until**
-   stop date ends the series — the last matching day on or before it is the
-   final occurrence.
+   stop date ends the series.
