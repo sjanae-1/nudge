@@ -6,16 +6,14 @@
 
 ## Overview
 
-Nudge is an adaptive personal planner for college students written in Jac.
-With components of web frontend, mobile app, and terminal CLI, change a due date anywhere and it updates everywhere. Its three main features:
+Nudge is an adaptive personal planner for college students written in Jac with components of web frontend, mobile app, and terminal CLI. Change a due date anywhere and it updates everywhere. It has three main features:
 
-1. **List & Calendar views with a downloadable calendar** — see every task
+1. **List and Calendar views** — See every task
    as a list or a month calendar, with a dynamic **"due within [N]
-   [days/weeks]"** window on the "Today" view to keep the most urgent tasks on your radar.
-2. **AI Task Breakdown** — one click splits an overwhelming task into
-   dated, editable 15–45-minute subtasks. Every new account ships with a
-   finished example already broken down under *Grocery shopping*.
-3. **Done & Deleted folders with an Auto-Rollover nudge** — "Done" and "Delete" folders keep old tasks, each restorable with one click. Unfinished
+   [days/weeks]"** window on the "Today" view to keep the most urgent tasks on your radar. Download and import your tasks into your own calendar.
+2. **AI Task Breakdown** — Splits an overwhelming task into
+   dated, editable 15–45-minute subtasks with one click.
+3. **Done and Deleted folders with an Auto-Rollover nudge** — "Done" and "Delete" folders keep old tasks, each restorable with one click. Unfinished
    past-due tasks are moved to today, and a banner reports how many were
    nudged.
 
@@ -48,13 +46,13 @@ jac run cli -- delete <task>            # move a task to the Delete folder
 ```
 
 The CLI runs the API colocated in-process, so it hits the same database even
-when the web server is off. Each account has its own task graph: run `login`
+when the web server is off. Run `login`
 with the same username you use in the browser and `all` will list exactly
 what the web app shows.
 
 ## Mobile App
 
-A lightweight Today / This-week view for quick capture and completion on the go.
+A lightweight "Today" / "This-week" view for quick task add and completion on the go.
 
 ```bash
 # stop the web dev server first — both claim the 800x ports
@@ -84,14 +82,11 @@ Nudge uses a unified Jac backend to keep data synchronized across four component
 * **CLI (`cli/`):** Fast terminal for keyboard-driven task entry and execution during coding sessions.
 
 
-Three things that make it impressive:
+## Three things that make Nudge impressive:
 
-1. **Per-task priority with live smart ordering** — each task gets assigned with priority, and break-down button to help you plan your day using AI.
-2. **Dynamic folders with a folder-filtered calendar & export** — classify
-   tasks by folders. Pick a color from a preset rainbow palette to distinguish between tasks in different folders.
-   In calendar view, export tasks in your selected folders to sync with other events you have planned on GCal/Macbook Calendar.
-3. **Recurring tasks, occurrence by occurrence** — repeat rules (daily,
+1. **Per-task priority with live smart ordering** — The priority and AI breakdown assigned to each task help you plan your day using smart AI so you can save the time and energy to actually work on these tasks.
+2. **Dynamic folders with a folder-filtered calendar & export** — Classify
+   tasks by colorful folders you get to pick from a rainbow palette. In calendar view, export tasks in your selected folders to be in sync with other events you have planned on GCal/Macbook Calendar.
+3. **Recurring tasks, occurrence by occurrence** — Repeat rules (daily,
    weekdays, every week on a day, monthly, annual) add each occurrence as
-   its own independent row; completing
-   one adds the next occurrence to the list. An optional **repeat until**
-   stop date ends the series.
+   its own independent task so you can plan ahead.
