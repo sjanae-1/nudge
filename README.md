@@ -26,6 +26,7 @@ With components of web frontend, mobile app, and terminal CLI, change a due date
 ```bash
 git clone https://github.com/sjanae-1/nudge.git
 cd nudge
+jac install            # Python deps: litellm + llama-cpp-python for the local AI model
 jac run --dev          # web app + API → http://localhost:8000 (API on :8001)
 ```
 
