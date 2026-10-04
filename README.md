@@ -34,6 +34,8 @@ Click on **Create account** on the login page to register for a new account.
 ## CLI
 
 ```bash
+jac run cli -- login <username>         # sign in: CLI then shows YOUR web tasks
+jac run cli -- logout                   # back to the shared anonymous list
 jac run cli -- today                    # what is due soon
 jac run cli -- all                      # every open task
 jac run cli -- add "EECS 449 HW1" --due 2026-10-05 --folder "EECS 449" --priority high
@@ -41,8 +43,6 @@ jac run cli -- add "Team catchup" --due 2026-10-04 --recur weekly --until 2026-1
 jac run cli -- breakdown <task>         # AI micro-steps
 jac run cli -- done <task>              # task number or title fragment
 jac run cli -- delete <task>            # move a task to the Delete folder
-jac run cli -- login <username>         # sign in: CLI then shows YOUR web tasks
-jac run cli -- logout                   # back to the shared anonymous list
 ```
 
 The CLI runs the API colocated in-process, so it hits the same database even
@@ -61,9 +61,7 @@ jac run --dev mobile                    # native: scan the Expo Go QR (press i /
 
 The one-shot prepare step is required on a fresh clone (and again after
 `jac clean`): it writes `.jac/client/mobile/compiled/`, which the dev
-server's index.html imports. Without it the browser shows a Vite error
-overlay — `[plugin:vite:import-analysis] Failed to resolve import
-"/mobile/compiled/_entry.js"` — because that file does not exist yet.
+server's index.html imports.
 
 First native run scaffolds the Expo project and installs npm deps (one-time).
 A lightweight Today / This-week view for quick capture and completion on the go.
