@@ -82,4 +82,4 @@ Nudge uses a unified Jac backend to keep data synchronized across four component
 
 1. **Per-task priority with live smart ordering** — The priority and AI breakdown assigned to each task help you plan your day using smart AI so you can save the time and energy to actually work on them.
 2. **AI Task Breakdown** — Splits an overwhelming large task into 15–45-minute subtasks with one click.
-3. **Dynamic folders with calendar export** — Manage your tasks using colorful folders. You get to pick your favorite color for each folders from a rainbow palette.
+3. **Dynamic folders with calendar export** — Manage your tasks using colorful folders. You get to pick your favorite color for each folder from a rainbow palette.
