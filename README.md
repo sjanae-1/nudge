@@ -42,27 +42,20 @@ jac run cli -- done <task>
 jac run cli -- delete <task>
 ```
 
-The CLI runs the API colocated in-process, so it hits the same database even when the web server is off.
-
 Run `login` with the same username you use in the browser and `all` will list exactly what the web app shows.
 
 ## Mobile App
 
 A lightweight "Today" / "This-week" view for quick task add and completion on the go.
 
+**Kill web app before running mobile app. Control+C on Macbook.**
+
 ```bash
-# stop the web dev server first using control+c on Macbook
 jac run _prepare_mobile_web.jac         # prep browser preview
 jac run --dev --platform web mobile     # preview in a browser (react-native-web)
 jac run --dev mobile                    # native: scan the Expo Go QR (press i / a)
+jac run --dev mobile -- --tunnel        # run faster
 ```
-
-> If mobile native crashes, run this once after `.jac/mobile-rn` exists, then re-run the command above:
->
-> ```bash
-> node scripts/patch-expo-tar.mjs
-> ```
-
 
 ## How the four components fit together
 
