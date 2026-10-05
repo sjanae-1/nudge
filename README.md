@@ -57,6 +57,18 @@ jac run --dev --platform web mobile     # preview in a browser (react-native-web
 jac run --dev mobile                    # native: scan the Expo Go QR (press i / a)
 ```
 
+> **First native build dies with `Error: Invalid or corrupt jarfile .../gradle-wrapper.jar`?**
+> Jac drives Expo with Bun, and Bun appends junk when streaming files out of Expo's
+> template archive, so `gradle-wrapper.jar` ends up 13 KB too long and the JVM refuses
+> to start it. Run this once after `.jac/mobile-rn` exists, then re-run the command above:
+>
+> ```bash
+> node scripts/patch-expo-tar.mjs
+> ```
+>
+> It patches Expo's extractor in place (idempotent) and re-extracts the template with
+> jac's bundled Bun to prove the jar and PNGs come out clean.
+
 ## How the four components fit together
 
 Nudge uses a unified Jac backend to keep data synchronized across four components:
