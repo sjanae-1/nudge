@@ -11,8 +11,9 @@ Nudge is an adaptive personal planner for college students written in Jac with c
 1. **List and Calendar views** — See every task
    as a list or a month calendar, with a dynamic **"due within [N]
    [days/weeks]"** window on the "Today" view to keep the most urgent tasks on your radar. Download and import your tasks into your own calendar.
-2. **AI Task Breakdown** — Splits an overwhelming task into
-   dated, editable 15–45-minute subtasks with one click.
+2. **Recurring tasks, occurrence by occurrence** — Repeat rules (daily,
+   weekdays, every week on a day, monthly, annual) add each occurrence as
+   its own independent task so you can plan ahead.
 3. **Done and Deleted folders with an Auto-Rollover nudge** — "Done" and "Delete" folders keep old tasks, each restorable with one click. Unfinished
    past-due tasks are moved to today, and a banner reports how many were
    nudged.
@@ -85,8 +86,7 @@ Nudge uses a unified Jac backend to keep data synchronized across four component
 ## Three things that make Nudge impressive:
 
 1. **Per-task priority with live smart ordering** — The priority and AI breakdown assigned to each task help you plan your day using smart AI so you can save the time and energy to actually work on these tasks.
-2. **Dynamic folders with a folder-filtered calendar & export** — Classify
+2. **AI Task Breakdown** — Splits an overwhelming task into
+   dated, editable 15–45-minute subtasks with one click.
+3. **Dynamic folders with calendar export** — Classify
    tasks by colorful folders you get to pick from a rainbow palette. In calendar view, export tasks in your selected folders to be in sync with other events you have planned on GCal/Macbook Calendar.
-3. **Recurring tasks, occurrence by occurrence** — Repeat rules (daily,
-   weekdays, every week on a day, monthly, annual) add each occurrence as
-   its own independent task so you can plan ahead.
