@@ -55,7 +55,7 @@ what the web app shows.
 
 ```bash
 # stop the web dev server first — both claim the 800x ports
-jac run _prepare_mobile_web.jac         # one-shot: compile the mobile client for the browser preview
+jac run _prepare_mobile_web.jac         # compile the mobile client for the browser preview
 jac run --dev --platform web mobile     # preview in a browser (react-native-web)
 jac run --dev mobile                    # native: scan the Expo Go QR (press i / a)
 ```
