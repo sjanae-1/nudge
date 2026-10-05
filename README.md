@@ -1,6 +1,6 @@
 # Nudge — Personal Planner in Jac
 
-**Name:** Jiayin Shao
+**Name:** Jiayin Shao (sjanae@umich.edu)
 
 **Course:** EECS 449, Fall 2026
 
