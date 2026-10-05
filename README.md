@@ -8,10 +8,10 @@
 
 Nudge is an adaptive personal planner for college students written in Jac with components of web frontend, mobile app, and terminal CLI. Change a due date anywhere and it updates everywhere. It has three main features:
 
-1. **List and Calendar views** — See every task as a list or a month calendar, with a dynamic **"due within [N]
-   [days/weeks]"** window on the "Today" view to keep the most urgent tasks on your radar. Download and import tasks into your own calendar.
+1. **List and Calendar views** — See every task as a list or a month calendar, with a dynamic "due within [N]
+   [days/weeks]" window on the "Today" view to keep the most urgent tasks on your radar. Download and import tasks into your own calendar.
 2. **Recurring tasks, occurrence by occurrence** — Repeat rules (daily, weekdays, every week on a day, monthly, annual) add each occurrence as its own independent task so you can plan ahead.
-3. **Done and Deleted folders with an Auto-Rollover nudge** — "Done" and "Delete" folders keep old tasks, each restorable with one click. Unfinished past-due tasks are moved to today, and a banner reports how many were nudged.
+3. **Done and Deleted folders with an Auto-Rollover nudge** — Done and Delete folders keep old tasks, each restorable with one click. Past-due tasks are moved to today, and a banner reports how many were nudged.
 
 ## Setup & Run
 
@@ -52,7 +52,7 @@ A lightweight "Today" / "This-week" view for quick task add and completion on th
 
 ```bash
 # stop the web dev server first using control+c on Macbook
-jac run _prepare_mobile_web.jac         # prepare for for browser preview
+jac run _prepare_mobile_web.jac         # prep browser preview
 jac run --dev --platform web mobile     # preview in a browser (react-native-web)
 jac run --dev mobile                    # native: scan the Expo Go QR (press i / a)
 ```
